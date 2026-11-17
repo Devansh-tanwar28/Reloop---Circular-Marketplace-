@@ -1,0 +1,6 @@
+{
+  "name": "ReLoop - Circular Marketplace",
+  "description": "A circular marketplace prototype to Rent, Repair & Resell products, giving every item a longer life.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

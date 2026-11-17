@@ -1,0 +1,1435 @@
+# MASTER PROMPT: BUILD A COMPLETE FULL-STACK WEB APPLICATION — RELOOP
+
+## PROJECT OVERVIEW
+
+We have already designed and completed the frontend prototype of a web application called **ReLoop**.
+
+Now, transform this existing prototype into a complete, functional, database-driven, full-stack web application.
+
+ReLoop is a circular marketplace platform that allows users to:
+
+1. **RENT** – Rent products that other users own but do not regularly use.
+2. **REPAIR** – Connect users with repair professionals and service providers to restore products.
+3. **RESELL** – Buy and sell pre-owned products through a trusted marketplace.
+
+The central objective is to extend the useful life and value of products by enabling renting, repairing, reusing, and reselling.
+
+### Core Brand Positioning
+
+**ReLoop — Give Every Product a Longer Life.**
+
+Tagline:
+
+"Rent what you need. Repair what you own. Resell what you no longer use."
+
+The platform must function as a unified circular marketplace rather than three disconnected applications.
+
+---
+
+# 1. MOST IMPORTANT INSTRUCTION: PRESERVE THE EXISTING DESIGN
+
+The frontend prototype is already completed.
+
+Your first task is to inspect the existing project structure, frontend components, pages, styling, navigation, and assets.
+
+**DO NOT redesign, recreate, replace, or unnecessarily modify the existing UI.**
+
+Preserve the prototype's existing:
+
+- Overall layout and page structure
+- Navigation bar
+- Homepage and hero section
+- Typography and font hierarchy
+- Card designs
+- Button styles
+- Spacing and alignment
+- Icons and illustrations
+- Border radius
+- Shadows
+- Product cards
+- Dashboards
+- Forms
+- Modals
+- Navigation patterns
+- Responsive layouts
+- Animations and hover effects
+
+The objective is to connect the existing interface to actual backend functionality.
+
+### Strict Brand Color Palette
+
+Use the exact existing color palette:
+
+| Color | Hex Code | Purpose |
+|---|---|---|
+| Black | #000000 | Primary text and strong contrast |
+| Deep Slate Blue | #233D4D | Navigation, dark sections and secondary elements |
+| Orange | #FE7F2D | Primary buttons, CTAs and highlights |
+| Light Grey | #EAECF0 | Backgrounds, cards and input surfaces |
+
+Do not introduce unrelated colors or change the established color hierarchy.
+
+Retain the exact visual identity of the prototype across every page, including newly implemented pages.
+
+For additional functional states such as success, pending, warning and error, use restrained variations that complement the existing brand palette.
+
+### Design Preservation Rule
+
+If a feature requires additional UI elements, implement them using the existing design system.
+
+For example:
+- New forms must use existing input styles.
+- New dashboards must follow existing card layouts.
+- New modals must follow existing modal styling.
+- New tables must follow existing typography and spacing.
+- New status badges must match the existing design language.
+
+Do not compromise design consistency for functionality.
+
+---
+
+# 2. DEVELOPMENT APPROACH
+
+Build this as a real full-stack application.
+
+Do not create a frontend-only simulation.
+
+All important actions must be connected to backend APIs and persistent database records.
+
+The application must support:
+
+- Real registration and login
+- Secure authentication
+- Database integration
+- Product listing and management
+- Rental booking
+- Payment integration
+- Security deposit tracking
+- Repair requests
+- Resale transactions
+- User dashboards
+- Admin controls
+- Notifications
+- Reviews and ratings
+- Damage claims and disputes
+
+### First Inspect the Existing Codebase
+
+Before writing code:
+
+1. Inspect all existing frontend files.
+2. Understand the existing framework and dependencies.
+3. Identify reusable components.
+4. Identify existing routes and pages.
+5. Inspect the current styling system.
+6. Identify placeholder data and nonfunctional buttons.
+7. Understand the existing application architecture.
+
+Retain the existing framework, styling approach, and project structure wherever practical.
+
+Do not unnecessarily migrate the project to another technology.
+
+If backend infrastructure does not exist, introduce a suitable backend architecture without disrupting the existing frontend.
+
+### Suggested Technology Stack
+
+Use these technologies where compatible with the existing project:
+
+**Frontend**
+- React / Next.js
+- TypeScript
+- Tailwind CSS or the existing styling system
+- React Router or Next.js routing
+- Reusable component architecture
+
+**Backend**
+- Python with FastAPI or Django
+- REST API architecture
+- JWT-based authentication
+- Role-based authorization
+
+**Database**
+- PostgreSQL
+
+**File Storage**
+- Cloudinary, AWS S3, or another suitable object storage service.
+
+**AI**
+- Python
+- Computer Vision
+- Machine Learning
+- Suitable vision-capable AI models
+
+**Payments**
+- Razorpay or another suitable payment gateway supporting the required payment/refund operations in India.
+
+These are recommendations, not instructions to replace an existing working stack.
+
+---
+
+# 3. USER AUTHENTICATION AND ACCOUNT MANAGEMENT
+
+Implement complete authentication functionality.
+
+### Registration
+
+Users should be able to register using:
+
+- Full name
+- Email address
+- Mobile number
+- Password
+- Confirm password
+
+Implement:
+- Email verification
+- Mobile OTP verification where configured
+- Password hashing
+- Duplicate account prevention
+- Form validation
+- Secure session management
+
+### Login
+
+Provide:
+- Email/mobile login
+- Password authentication
+- Forgot password
+- Reset password
+- Logout
+- Session expiration
+
+### User Profile
+
+Each user should have:
+
+- Unique user ID
+- Full name
+- Profile image
+- Email
+- Mobile number
+- Location
+- Account verification status
+- Average rating
+- Number of completed rentals
+- Number of completed sales
+- Repair history
+- Transaction history
+
+### User Roles
+
+Implement role-based access control for:
+
+1. Regular User
+2. Repair Service Provider
+3. Administrator
+
+A regular user can act as both a buyer/renter and an owner/seller.
+
+Do not force separate accounts for these activities.
+
+---
+
+# 4. HOMEPAGE AND MARKETPLACE
+
+Connect the existing homepage to actual application data.
+
+The homepage should display:
+
+- Featured rental products
+- Popular categories
+- Recently listed products
+- Products available nearby
+- Popular resale listings
+- Featured repair services
+- Search functionality
+
+### Global Search
+
+Implement a functional search system.
+
+Users should be able to search by:
+
+- Product name
+- Brand
+- Category
+- Location
+- Keywords
+
+Add appropriate filters and sorting options.
+
+### Categories
+
+Include:
+
+- Electronics
+- Cameras
+- Laptops
+- Appliances
+- Furniture
+- Sports Equipment
+- Vehicles
+- Books
+- Tools
+- Other
+
+Allow users to browse products by category.
+
+---
+
+# 5. RENT MODULE — COMPLETE IMPLEMENTATION
+
+This is one of the most important modules.
+
+Develop an end-to-end peer-to-peer rental marketplace.
+
+## A. Create Rental Listing
+
+Allow owners to list products for rent.
+
+Required fields:
+
+- Product name
+- Category
+- Brand
+- Model
+- Description
+- Product images
+- Product condition
+- Original purchase price
+- Rental price
+- Pricing unit: daily, weekly or monthly
+- Security deposit amount
+- Minimum rental duration
+- Maximum rental duration
+- Available dates
+- Pickup location
+- Rental terms
+- Included accessories
+
+Allow owners to edit, deactivate or delete eligible listings.
+
+## B. Browse Rental Products
+
+Users must be able to:
+
+- Search products
+- Filter by category
+- Filter by rental price
+- Filter by location
+- Filter by rating
+- Filter by availability
+- Filter by condition
+- Sort by price or relevance
+
+Display actual product information retrieved from the database.
+
+## C. Product Details
+
+Display:
+
+- Product gallery
+- Product specifications
+- Description
+- Owner information
+- Owner rating
+- Location
+- Rental pricing
+- Security deposit
+- Availability calendar
+- Rental rules
+- Previous reviews
+
+## D. Booking System
+
+When a renter selects a product:
+
+1. Select rental start date.
+2. Select rental end date.
+3. Calculate rental duration.
+4. Calculate rental charges.
+5. Display security deposit.
+6. Display applicable platform fees and taxes.
+7. Display the total payable amount.
+8. Send booking request to the owner.
+
+The owner must be able to accept or reject the request.
+
+Do not allow overlapping confirmed bookings.
+
+Use database-level consistency and appropriate transaction locking to prevent double bookings.
+
+## E. Rental Payment
+
+Implement payment functionality using a suitable payment gateway.
+
+Payment calculation:
+
+Total Payable = Rental Charges + Security Deposit + Applicable Fees
+
+Example:
+
+Rental Charges: ₹1,700
+
+Security Deposit: ₹3,000
+
+Platform Fee: ₹100
+
+Total: ₹4,800
+
+Support payment status tracking.
+
+Use payment gateway webhooks to verify transactions rather than trusting frontend payment success messages.
+
+For development, provide a clearly labeled test payment mode.
+
+Never store card numbers, CVVs, gateway secrets, or sensitive payment credentials directly in the application database.
+
+## F. Digital Rental Agreement
+
+Generate a rental agreement for every confirmed booking.
+
+It should contain:
+
+- Owner details
+- Renter details
+- Product information
+- Rental duration
+- Rental price
+- Security deposit
+- Pickup date
+- Return date
+- Product condition
+- Responsibilities
+- Damage conditions
+- Late return policy
+- Cancellation policy
+
+Both parties should digitally acknowledge the terms.
+
+Store the agreement against the booking.
+
+Provide a downloadable PDF where supported.
+
+## G. Pickup and Return Management
+
+Before pickup:
+
+- Owner uploads product condition photographs.
+- Renter verifies the listed condition.
+- Both parties confirm included accessories.
+- System records timestamps.
+
+At return:
+
+- Owner uploads return-condition photographs.
+- Renter can confirm the return condition.
+- Owner can flag potential damage.
+- System records the return event.
+
+## H. Security Deposit Management
+
+The deposit must be tracked independently from the rental charge.
+
+Possible outcomes:
+
+1. Full refund after successful return.
+2. Partial deduction after an approved damage claim.
+3. Full or partial deduction for an approved loss claim, subject to applicable rules.
+
+Use payment-provider-supported authorization, capture, refund or other compliant payment operations.
+
+Do not describe the platform as providing regulated escrow or holding customer funds unless the payment architecture and legal arrangements actually support that.
+
+Maintain complete transaction records.
+
+## I. Rental Status Management
+
+Implement these statuses:
+
+- Requested
+- Accepted
+- Rejected
+- Payment Pending
+- Confirmed
+- Ready for Pickup
+- Active
+- Return Requested
+- Under Inspection
+- Completed
+- Disputed
+- Cancelled
+
+Ensure that status transitions are validated by the backend.
+
+---
+
+# 6. TRUST, SAFETY AND DAMAGE MANAGEMENT
+
+Trust is a major differentiator of ReLoop.
+
+Build a structured damage-reporting and dispute-resolution mechanism.
+
+### Damage Reporting
+
+If an owner believes an item has been returned damaged:
+
+1. Owner creates a damage claim.
+2. Owner uploads return-condition evidence.
+3. System retrieves pickup-condition evidence.
+4. Renter receives a notification.
+5. Renter can accept or dispute the claim.
+6. Admin reviews the evidence.
+7. Admin records a decision.
+8. Eligible refund/deduction is processed.
+
+### Damage Claim Information
+
+Store:
+
+- Booking ID
+- Owner ID
+- Renter ID
+- Product ID
+- Damage description
+- Pickup evidence
+- Return evidence
+- Reported repair cost
+- Renter response
+- Admin decision
+- Final compensation amount
+- Claim status
+- Timestamps
+
+### Important Business Rule
+
+AI must never automatically determine legal liability or deduct a security deposit without an authorized decision.
+
+Use AI-assisted image analysis only to flag possible visual differences.
+
+The dispute-resolution process must remain evidence-based and transparent.
+
+---
+
+# 7. REPAIR MODULE — COMPLETE IMPLEMENTATION
+
+Repair is a separate service within the platform.
+
+It is NOT exclusively a mechanism for fixing items damaged during rental transactions.
+
+Users should be able to request repairs for their own products independently.
+
+## A. Repair Marketplace
+
+Create a repair-service marketplace where users can discover providers.
+
+Provider profiles should include:
+
+- Business/service name
+- Contact information
+- Location
+- Specialization
+- Services offered
+- Customer ratings
+- Experience
+- Availability
+- Verification status
+
+Allow search by:
+
+- Category
+- Location
+- Service type
+- Rating
+
+## B. Create Repair Request
+
+The repair request form should collect:
+
+- Product name
+- Brand/model
+- Product category
+- Problem description
+- Images/videos
+- Location
+- Preferred service date
+- Pickup or drop-off preference
+
+After submission, create a unique repair request ID.
+
+## C. Provider Matching
+
+Display relevant service providers based on:
+
+- Product category
+- Specialization
+- Location
+- Availability
+
+For the MVP, implement rule-based provider matching.
+
+## D. Quotations
+
+Providers should be able to:
+
+- Inspect repair requests
+- Submit estimated costs
+- Describe required work
+- Mention expected completion time
+- Accept or reject requests
+
+Users should be able to approve or reject quotations.
+
+Do not automatically charge users before they approve the quotation.
+
+## E. Repair Tracking
+
+Implement the following status flow:
+
+Requested → Provider Assigned → Inspection → Quotation Received → Approved → Under Repair → Completed
+
+Also support:
+
+- Rejected
+- Cancelled
+- On Hold
+
+Provide repair history and notifications.
+
+## F. Repair Provider Dashboard
+
+Create a dedicated dashboard where providers can:
+
+- Manage profiles
+- View incoming requests
+- Submit quotations
+- Update repair statuses
+- View completed requests
+- View ratings and feedback
+
+---
+
+# 8. RESELL MODULE — COMPLETE IMPLEMENTATION
+
+Build a fully functional second-hand product marketplace.
+
+## A. Create Resale Listing
+
+Users should be able to list products for sale.
+
+Required information:
+
+- Product name
+- Category
+- Brand
+- Model
+- Product age
+- Original price
+- Expected selling price
+- Product condition
+- Description
+- Images
+- Location
+- Available accessories
+
+Allow users to edit and manage their listings.
+
+## B. Browse Resale Products
+
+Implement:
+
+- Search
+- Category filters
+- Location filters
+- Price range
+- Condition filters
+- Sorting
+- Product details
+
+## C. Buyer-Seller Interaction
+
+Allow interested buyers to:
+
+- Send inquiries
+- Contact sellers through platform messaging
+- Negotiate prices
+- Submit purchase interest
+
+Provide a basic messaging interface.
+
+## D. Purchase Workflow
+
+Implement a structured transaction flow:
+
+Buyer Selects Product → Purchase Request → Seller Acceptance → Payment → Product Handover → Transaction Completed
+
+For the academic MVP, use a clearly defined payment and handover workflow.
+
+Avoid marking an order completed merely because a buyer clicked a button.
+
+Use transaction status confirmation and appropriate handover acknowledgement.
+
+## E. Listing Management
+
+Allow sellers to:
+
+- View active listings
+- Edit listings
+- Mark products sold
+- Pause listings
+- Delete eligible listings
+- Track inquiries
+- View transaction history
+
+Prevent a sold product from being purchased again.
+
+---
+
+# 9. USER DASHBOARD
+
+Build a dynamic dashboard connected to real database records.
+
+The dashboard should include:
+
+### Overview
+
+- Total active rentals
+- Rental bookings
+- Active repair requests
+- Active listings
+- Wallet/earnings summary
+- Recent notifications
+
+### My Rentals
+
+Display:
+
+- Upcoming rentals
+- Active rentals
+- Completed rentals
+- Cancelled rentals
+- Disputed rentals
+
+### My Listings
+
+Display:
+
+- Rental listings
+- Resale listings
+- Listing status
+- Product views/inquiries where tracked
+
+### My Repair Requests
+
+Display:
+
+- Request details
+- Assigned provider
+- Quotations
+- Repair status
+- Completion history
+
+### My Transactions
+
+Show:
+
+- Rental payments
+- Security deposits
+- Refunds
+- Sales
+- Repair payments
+- Platform fees
+
+### Messages and Notifications
+
+Create a notification center for:
+
+- Booking requests
+- Booking approvals
+- Payment confirmation
+- Pickup reminders
+- Return reminders
+- Repair quotations
+- Repair updates
+- Buyer inquiries
+- Damage claims
+- Refund updates
+
+---
+
+# 10. AI-POWERED FEATURES
+
+Integrate AI functionality in a modular manner.
+
+These features should be genuinely functional wherever the required model, dataset, and API credentials are configured.
+
+Do not simply display fake AI-generated results.
+
+## A. Smart Rental Pricing
+
+Develop an AI-assisted pricing recommendation system.
+
+Inputs:
+
+- Product category
+- Brand
+- Age
+- Condition
+- Original purchase price
+- Rental duration
+- Historical rental prices
+- Availability and demand data, when available
+
+Output:
+
+- Suggested rental price
+- Suggested range
+- Explanation of recommendation
+
+Initially, use a transparent rule-based baseline if insufficient training data is available.
+
+## B. AI-Assisted Damage Detection
+
+Develop an optional computer vision component.
+
+Inputs:
+
+- Pickup photographs
+- Return photographs
+
+The model should attempt to flag visible differences such as:
+
+- Scratches
+- Cracks
+- Dents
+- Missing visible components
+- Other physical changes
+
+Output:
+
+- Potential difference detected
+- Image comparison visualization
+- Confidence score, if supported by the selected model
+- Explanation or flagged region
+
+Important:
+
+The model must clearly state its limitations. Different lighting, angles, and image quality can create false positives.
+
+AI output must be reviewed by a human and must not independently determine compensation or liability.
+
+## C. Smart Product Recommendations
+
+Recommend products based on:
+
+- Search history
+- Product category
+- Budget
+- Location
+- Availability
+- Rental duration
+- User preferences
+
+Use a recommendation algorithm appropriate to the available data.
+
+## D. Rent vs Buy Recommendation
+
+Allow users to enter:
+
+- Intended usage duration
+- Rental price
+- Purchase price
+- Estimated resale value, where available
+
+Calculate estimated costs and suggest whether renting or buying is more economical.
+
+Explain the calculation rather than presenting an unexplained recommendation.
+
+## AI Implementation Rule
+
+Build AI components as independent services or modules.
+
+Use environment variables for model credentials and API keys.
+
+If AI credentials are unavailable, provide a clearly labeled fallback experience.
+
+Do not invent model accuracy, confidence, or AI processing results.
+
+---
+
+# 11. ADMIN DASHBOARD
+
+Build a functional administrator panel.
+
+Only authorized administrators should access it.
+
+### Admin Overview
+
+Display:
+
+- Total registered users
+- Verified users
+- Active rental listings
+- Active bookings
+- Resale listings
+- Repair requests
+- Active disputes
+- Total platform transactions
+
+### User Management
+
+- View users
+- Verify accounts
+- Suspend accounts
+- Review reported accounts
+
+### Listing Management
+
+- Review listings
+- Remove prohibited content
+- Manage reported products
+- Suspend suspicious listings
+
+### Rental Management
+
+- Monitor bookings
+- Review payment records
+- Monitor deposit transactions
+- View pickup/return evidence
+
+### Dispute Management
+
+- View damage claims
+- Inspect submitted evidence
+- Record decisions
+- Approve eligible compensation/refund actions
+
+### Repair Management
+
+- Verify repair providers
+- Manage provider complaints
+- Monitor quotations and repair requests
+
+### Reports and Analytics
+
+Generate dashboards for:
+
+- Rentals per month
+- Most popular product categories
+- Resale transactions
+- Repair requests
+- Platform activity
+- User growth
+
+All analytics must be calculated from actual database records.
+
+---
+
+# 12. DATABASE ARCHITECTURE
+
+Design a normalized relational database.
+
+Create appropriate models/tables for:
+
+1. Users
+2. User Profiles
+3. User Verification
+4. Products
+5. Product Images
+6. Rental Listings
+7. Resale Listings
+8. Rental Bookings
+9. Rental Availability
+10. Rental Agreements
+11. Pickup Evidence
+12. Return Evidence
+13. Security Deposits
+14. Payment Transactions
+15. Refund Transactions
+16. Damage Claims
+17. Repair Requests
+18. Repair Providers
+19. Repair Quotations
+20. Repair Status History
+21. Orders
+22. Messages
+23. Notifications
+24. Reviews
+25. Admin Actions
+26. Reports
+
+Establish proper foreign keys, indexes, unique constraints, and timestamps.
+
+Use soft deletion where required for important transaction records.
+
+Maintain an auditable history of payment, booking, claim, and status changes.
+
+Implement database migrations.
+
+Do not use local arrays or hardcoded objects as substitutes for persistent application data.
+
+---
+
+# 13. BACKEND API DEVELOPMENT
+
+Create organized REST APIs.
+
+Suggested API structure:
+
+### Authentication
+- POST /api/auth/register
+- POST /api/auth/login
+- POST /api/auth/logout
+- POST /api/auth/forgot-password
+- POST /api/auth/reset-password
+- GET /api/auth/me
+
+### Products
+- GET /api/products
+- GET /api/products/{id}
+- POST /api/products
+- PUT /api/products/{id}
+- DELETE /api/products/{id}
+
+### Rentals
+- GET /api/rentals
+- POST /api/rentals
+- GET /api/rentals/{id}
+- POST /api/rentals/{id}/book
+- POST /api/bookings/{id}/accept
+- POST /api/bookings/{id}/reject
+- POST /api/bookings/{id}/pickup
+- POST /api/bookings/{id}/return
+
+### Repair
+- GET /api/repair/providers
+- POST /api/repair/requests
+- GET /api/repair/requests
+- POST /api/repair/requests/{id}/quotation
+- POST /api/repair/requests/{id}/approve
+- PATCH /api/repair/requests/{id}/status
+
+### Resell
+- GET /api/resale
+- POST /api/resale
+- PUT /api/resale/{id}
+- POST /api/resale/{id}/purchase
+- PATCH /api/resale/{id}/status
+
+### Payments
+- POST /api/payments/create
+- POST /api/payments/verify
+- POST /api/payments/refund
+- POST /api/payments/webhook
+
+### Damage Claims
+- POST /api/claims
+- GET /api/claims
+- POST /api/claims/{id}/respond
+- POST /api/claims/{id}/admin-decision
+
+### Admin
+- GET /api/admin/analytics
+- GET /api/admin/users
+- GET /api/admin/listings
+- GET /api/admin/disputes
+- PATCH /api/admin/users/{id}/status
+
+Adapt endpoint names and structures to the actual backend implementation.
+
+Create API documentation using OpenAPI/Swagger where supported.
+
+Ensure frontend and backend use consistent data structures and validation rules.
+
+---
+
+# 14. SECURITY AND DATA PROTECTION
+
+Implement appropriate security measures.
+
+Required:
+
+- Password hashing
+- JWT/session security
+- Role-based access control
+- Backend input validation
+- Authorization on every protected operation
+- Protection against SQL injection
+- XSS protection
+- CSRF protection where applicable
+- Rate limiting
+- Secure file-upload validation
+- File size restrictions
+- Safe image storage
+- Environment-based configuration
+- Secure payment webhooks
+- Audit logging
+- Error handling
+
+Never expose:
+
+- Password hashes
+- Secret keys
+- Payment credentials
+- Private verification documents
+- Internal admin information
+
+Implement access restrictions so users can only manage their own products, bookings, repair requests, transactions, and private evidence unless an authorized admin is reviewing them.
+
+Collect only the personal information necessary for the platform's operation.
+
+For production KYC, use an appropriate verified service provider and follow applicable Indian data protection requirements.
+
+---
+
+# 15. NOTIFICATIONS
+
+Build an in-app notification system.
+
+Trigger notifications for:
+
+- Registration completion
+- Booking request received
+- Booking accepted/rejected
+- Payment confirmation
+- Rental pickup
+- Return reminders
+- Damage claims
+- Refund processing
+- Repair quotations
+- Repair progress
+- Purchase inquiries
+- Sale completion
+
+Keep notification records in the database.
+
+Email and SMS notifications should be implemented using configurable providers.
+
+Do not make external communication mandatory for the local development version.
+
+---
+
+# 16. PAYMENT AND FINANCIAL TRANSACTION RULES
+
+Design a clear transaction ledger.
+
+Separate:
+
+- Rental charges
+- Security deposits
+- Platform fees
+- Repair charges
+- Resale payments
+- Refunds
+- Damage compensation
+
+Every transaction should have:
+
+- Transaction ID
+- User ID
+- Related booking/order/request
+- Amount
+- Transaction type
+- Gateway reference
+- Payment status
+- Timestamp
+
+Use idempotency and webhook verification to prevent duplicate payment processing.
+
+Provide test mode for the development environment.
+
+Do not represent a pending payment as successful.
+
+Do not automatically deduct deposits based on AI predictions.
+
+Production payment collection, provider payouts, refund policies, and deposit arrangements must be compatible with the selected payment provider and applicable legal requirements.
+
+---
+
+# 17. REAL-TIME FUNCTIONALITY
+
+Implement real-time updates where they materially improve the experience.
+
+Examples:
+
+- New booking notifications
+- Booking status changes
+- Repair status updates
+- New buyer inquiries
+- New messages
+- Damage claim notifications
+
+Use WebSockets or a suitable real-time service where appropriate.
+
+Otherwise, provide a reliable polling or refresh-based fallback.
+
+---
+
+# 18. SAMPLE DATA AND TEST ENVIRONMENT
+
+Create realistic demo data to demonstrate the platform.
+
+Include:
+
+- Different user accounts
+- Rental products
+- Resale products
+- Repair service providers
+- Repair requests
+- Completed and active bookings
+- Reviews
+- Transaction records
+
+Use fictional data only.
+
+Create separate test accounts for:
+
+1. Regular User
+2. Owner/Seller
+3. Repair Provider
+4. Administrator
+
+Provide a documented way to access these demo accounts in development.
+
+Do not mix test data with production customer data.
+
+---
+
+# 19. TESTING AND QUALITY ASSURANCE
+
+Test the complete application.
+
+### Authentication Testing
+
+- Registration
+- Login
+- Logout
+- Password reset
+- Unauthorized access
+
+### Rental Testing
+
+- Listing creation
+- Availability checking
+- Booking request
+- Booking approval
+- Payment
+- Pickup
+- Return
+- Deposit refund
+
+### Repair Testing
+
+- Request creation
+- Provider matching
+- Quotation
+- Approval
+- Status updates
+- Completion
+
+### Resale Testing
+
+- Listing creation
+- Search
+- Purchase request
+- Seller approval
+- Payment
+- Handover
+
+### Trust and Safety Testing
+
+- Pickup evidence
+- Return evidence
+- Damage claims
+- Dispute responses
+- Admin decisions
+
+### Additional Testing
+
+- API validation
+- Database consistency
+- Responsive layouts
+- Role permissions
+- Payment webhooks
+- File upload handling
+- Error states
+
+Fix all critical bugs before declaring the application complete.
+
+---
+
+# 20. DEPLOYMENT AND CONFIGURATION
+
+Prepare the application for deployment.
+
+Provide:
+
+- Frontend deployment configuration
+- Backend deployment configuration
+- PostgreSQL setup
+- Environment variable template
+- Database migration commands
+- Seed/demo data commands
+- Storage configuration
+- Payment gateway test configuration
+- Production build commands
+
+Use `.env.example` to document required environment variables.
+
+Never commit real secrets or credentials.
+
+Provide a complete README containing:
+
+1. Project overview
+2. Features
+3. Technology stack
+4. Architecture
+5. Folder structure
+6. Prerequisites
+7. Installation steps
+8. Backend setup
+9. Frontend setup
+10. Database setup
+11. Environment variables
+12. Running commands
+13. Testing instructions
+14. Deployment instructions
+15. Demo account instructions
+
+---
+
+# 21. DEVELOPMENT PHASES
+
+Implement the application in a structured sequence.
+
+## PHASE 1 — CODEBASE ANALYSIS AND SETUP
+
+- Inspect the existing prototype.
+- Preserve the current design.
+- Establish backend architecture.
+- Configure database.
+- Set up authentication.
+- Connect frontend to backend.
+
+## PHASE 2 — CORE MARKETPLACE
+
+- Product listings
+- Search and filters
+- Product detail pages
+- User profiles
+- Dashboard
+
+## PHASE 3 — RENTAL FUNCTIONALITY
+
+- Rental listings
+- Availability
+- Booking management
+- Payment integration
+- Security deposits
+- Agreements
+- Pickup and return
+
+## PHASE 4 — TRUST AND SAFETY
+
+- Condition evidence
+- Damage reports
+- Disputes
+- Admin decisions
+- Refund processing
+
+## PHASE 5 — REPAIR
+
+- Repair marketplace
+- Provider profiles
+- Repair requests
+- Quotations
+- Tracking
+
+## PHASE 6 — RESELL
+
+- Resale listings
+- Buyer inquiries
+- Purchase workflow
+- Transaction tracking
+
+## PHASE 7 — AI FEATURES
+
+- Smart pricing
+- Damage comparison
+- Product recommendations
+- Rent vs Buy analysis
+
+## PHASE 8 — ADMIN, TESTING AND DEPLOYMENT
+
+- Admin dashboard
+- Analytics
+- Notifications
+- Testing
+- Bug fixing
+- Deployment configuration
+
+Do not attempt to implement all features superficially at once.
+
+Complete each phase with working functionality and verify it before moving to the next.
+
+---
+
+# 22. FINAL ACCEPTANCE CRITERIA
+
+The project will be considered successfully developed only when:
+
+1. The existing prototype design remains visually consistent.
+2. Users can register and log in.
+3. Users can create and manage rental listings.
+4. Users can browse and book products.
+5. Owners can accept or reject booking requests.
+6. The application prevents overlapping confirmed bookings.
+7. Rental charges and security deposits are tracked separately.
+8. Users can complete the pickup and return workflow.
+9. Damage claims and disputes can be submitted and reviewed.
+10. Users can create and track repair requests.
+11. Repair providers can submit quotations and update statuses.
+12. Users can create resale listings.
+13. Buyers can submit purchase requests.
+14. All important operations persist in the database.
+15. Dashboards display actual user and transaction data.
+16. Admins can manage users, products, disputes and providers.
+17. Notifications work for important status changes.
+18. AI functionality is connected where implemented and properly labeled where still proposed.
+19. Protected routes and backend authorization work correctly.
+20. The application runs using documented setup instructions.
+
+---
+
+# 23. FINAL INSTRUCTION TO THE AI DEVELOPMENT AGENT
+
+You are acting as a senior full-stack engineer, software architect, database designer, UI engineer, and QA engineer.
+
+Your responsibility is to transform the already completed ReLoop prototype into a complete, functional web application.
+
+**The design is finalized. Functionality and system engineering are now the priority.**
+
+Follow these rules throughout development:
+
+- Never unnecessarily redesign the existing frontend.
+- Never replace existing components without a clear technical reason.
+- Never use fake data for actual application operations.
+- Never leave important buttons nonfunctional.
+- Never claim an operation succeeded without backend confirmation.
+- Never store important application data only in browser memory.
+- Never expose sensitive credentials.
+- Never make AI features appear functional when they are not.
+- Never allow users to bypass backend authorization.
+- Never skip error handling and validation.
+
+If an integration requires API keys or third-party credentials, configure it through environment variables and provide a working test-mode alternative.
+
+When a requirement is unclear, make a reasonable engineering decision, document it, and continue without unnecessarily interrupting development.
+
+**Build a cohesive, secure, scalable, database-driven ReLoop application while preserving the exact visual identity of our existing prototype.**
+
+Final product identity:
+
+**ReLoop — Rent. Repair. Resell. Reuse.**
+
+**Give Every Product a Longer Life.**
