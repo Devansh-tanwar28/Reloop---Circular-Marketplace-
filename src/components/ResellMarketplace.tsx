@@ -14,11 +14,12 @@ import {
   CheckCircle2,
   Users
 } from 'lucide-react';
-import { ResellProduct, ProductCategory } from '../types';
-import { apiPurchaseResellProduct } from '../services/api';
+import { ResellProduct } from '../types';
+import { apiPurchaseResellProduct, apiCreateResellOffer } from '../services/api';
 
 interface ResellMarketplaceProps {
   products: ResellProduct[];
+  currentUserId?: string;
   onOpenCreateListing: () => void;
   onSelectProduct?: (product: ResellProduct) => void;
   onPurchaseSuccess?: (product: ResellProduct) => void;
@@ -27,6 +28,7 @@ interface ResellMarketplaceProps {
 
 export const ResellMarketplace: React.FC<ResellMarketplaceProps> = ({
   products,
+  currentUserId = 'usr-101',
   onOpenCreateListing,
   onSelectProduct,
   onPurchaseSuccess,
@@ -37,6 +39,11 @@ export const ResellMarketplace: React.FC<ResellMarketplaceProps> = ({
   const [selectedResellItem, setSelectedResellItem] = useState<ResellProduct | null>(null);
   const [purchaseSuccessItem, setPurchaseSuccessItem] = useState<ResellProduct | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [showOfferForm, setShowOfferForm] = useState(false);
+  const [offerAmount, setOfferAmount] = useState<number>(0);
+  const [offerMessage, setOfferMessage] = useState('');
+  const [offerConfirmation, setOfferConfirmation] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const categories = [
     'All',
@@ -197,15 +204,23 @@ export const ResellMarketplace: React.FC<ResellMarketplaceProps> = ({
                 {/* Action Buttons */}
                 <div className="p-4 pt-0 grid grid-cols-2 gap-2">
                   <button
-                    onClick={() => setSelectedResellItem(item)}
+                    onClick={() => {
+                      setSelectedResellItem(item);
+                      setShowOfferForm(false);
+                      setOfferConfirmation(null);
+                      setActionError(null);
+                    }}
                     className="bg-[#EAECF0] hover:bg-[#233D4D] hover:text-white text-[#233D4D] text-xs font-bold py-2 rounded-xl text-center transition-colors"
                   >
                     View Product
                   </button>
                   <button
                     onClick={() => {
-                      if (onOfferSent) onOfferSent(item);
                       setSelectedResellItem(item);
+                      setOfferAmount(Math.round(item.sellingPrice * 0.92));
+                      setShowOfferForm(true);
+                      setOfferConfirmation(null);
+                      setActionError(null);
                     }}
                     className="bg-[#233D4D] hover:bg-[#FE7F2D] hover:text-[#000000] text-white text-xs font-bold py-2 rounded-xl text-center shadow-xs transition-colors"
                   >
@@ -292,27 +307,82 @@ export const ResellMarketplace: React.FC<ResellMarketplaceProps> = ({
                     {selectedResellItem.description}
                   </p>
 
+                  {actionError && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs font-bold text-red-800">
+                      {actionError}
+                    </div>
+                  )}
+
+                  {offerConfirmation && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-900">
+                      {offerConfirmation}
+                    </div>
+                  )}
+
+                  {showOfferForm && (
+                    <div className="bg-[#EAECF0] p-4 rounded-2xl space-y-2.5 border border-[#233D4D]/15">
+                      <div className="text-xs font-extrabold text-[#233D4D]">Submit Protected Offer</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="number"
+                          value={offerAmount}
+                          onChange={(e) => setOfferAmount(parseInt(e.target.value) || 0)}
+                          placeholder="Offer ₹"
+                          className="bg-white rounded-xl px-3 py-2 text-xs font-bold text-[#000000] outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={offerMessage}
+                          onChange={(e) => setOfferMessage(e.target.value)}
+                          placeholder="Note to seller (optional)"
+                          className="bg-white rounded-xl px-3 py-2 text-xs font-medium text-[#000000] outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setActionError(null);
+                          try {
+                            await apiCreateResellOffer(selectedResellItem.id, {
+                              buyerId: currentUserId,
+                              offerAmount: offerAmount || selectedResellItem.sellingPrice,
+                              message: offerMessage || 'Interested in purchasing with Buyer Protection.'
+                            });
+                            setOfferConfirmation(`Offer of ₹${(offerAmount || selectedResellItem.sellingPrice).toLocaleString()} sent to ${selectedResellItem.seller.name}!`);
+                            setShowOfferForm(false);
+                            if (onOfferSent) onOfferSent(selectedResellItem);
+                          } catch (err: any) {
+                            setActionError(err.message || 'Could not send offer.');
+                          }
+                        }}
+                        className="w-full bg-[#233D4D] text-white font-bold py-2 rounded-xl text-xs hover:bg-[#233D4D]/90"
+                      >
+                        Send Offer to Seller
+                      </button>
+                    </div>
+                  )}
+
                   <div className="flex space-x-3 pt-2">
                     <button
                       onClick={() => {
-                        if (onOfferSent) onOfferSent(selectedResellItem);
-                        setSelectedResellItem(null);
+                        setOfferAmount(Math.round(selectedResellItem.sellingPrice * 0.92));
+                        setShowOfferForm(!showOfferForm);
                       }}
                       className="flex-1 bg-[#233D4D] text-white font-bold py-3 rounded-xl text-xs hover:bg-[#233D4D]/90"
                     >
-                      Chat & Make Offer
+                      {showOfferForm ? 'Hide Offer Form' : 'Chat & Make Offer'}
                     </button>
                     <button
                       disabled={isPurchasing}
                       onClick={async () => {
                         setIsPurchasing(true);
+                        setActionError(null);
                         try {
-                          await apiPurchaseResellProduct(selectedResellItem.id);
+                          await apiPurchaseResellProduct(selectedResellItem.id, currentUserId);
                           setPurchaseSuccessItem(selectedResellItem);
                           if (onPurchaseSuccess) onPurchaseSuccess(selectedResellItem);
-                        } catch {
-                          setPurchaseSuccessItem(selectedResellItem);
-                          if (onPurchaseSuccess) onPurchaseSuccess(selectedResellItem);
+                        } catch (err: any) {
+                          setActionError(err.message || 'Purchase could not be completed.');
                         } finally {
                           setIsPurchasing(false);
                         }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   X, 
   Wrench, 
@@ -19,13 +19,15 @@ interface CreateRepairModalProps {
   onSubmit: (newReq: RepairRequest) => void;
   preselectedCategory?: ProductCategory;
   preselectedProvider?: string;
+  currentUserId?: string;
 }
 
 export const CreateRepairModal: React.FC<CreateRepairModalProps> = ({
   onClose,
   onSubmit,
   preselectedCategory = 'Cameras',
-  preselectedProvider
+  preselectedProvider,
+  currentUserId = 'usr-101'
 }) => {
   const [productName, setProductName] = useState('');
   const [category, setCategory] = useState<ProductCategory>(preselectedCategory);
@@ -36,8 +38,23 @@ export const CreateRepairModal: React.FC<CreateRepairModalProps> = ({
   const [imagePreview, setImagePreview] = useState<string | null>(
     'https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=80'
   );
+  const [imageLabel, setImageLabel] = useState('1 photo attached (HD clarity)');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedReq, setSubmittedReq] = useState<RepairRequest | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        setImagePreview(reader.result);
+        setImageLabel(`Uploaded: ${file.name}`);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const categories: ProductCategory[] = [
     'Cameras',
@@ -64,7 +81,8 @@ export const CreateRepairModal: React.FC<CreateRepairModalProps> = ({
         image: imagePreview || undefined,
         location,
         preferredDate,
-        providerName: preselectedProvider
+        providerName: preselectedProvider,
+        userId: currentUserId
       });
 
       setSubmittedReq(newReq);
@@ -197,7 +215,7 @@ export const CreateRepairModal: React.FC<CreateRepairModalProps> = ({
                 />
               </div>
 
-              {/* Image Upload Simulator */}
+              {/* Image Upload */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-[#233D4D] mb-1">
                   Upload Photos of Problem / Serial No.
@@ -207,11 +225,18 @@ export const CreateRepairModal: React.FC<CreateRepairModalProps> = ({
                     {imagePreview && (
                       <img src={imagePreview} alt="Preview" className="w-12 h-12 rounded-lg object-cover border border-white" />
                     )}
-                    <span className="text-xs text-gray-500 font-medium">1 photo attached (HD clarity)</span>
+                    <span className="text-xs text-gray-500 font-medium">{imageLabel}</span>
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
                   <button
                     type="button"
-                    onClick={() => alert('Photo upload simulated successfully.')}
+                    onClick={() => fileInputRef.current?.click()}
                     className="bg-[#233D4D] text-white text-xs font-bold px-3 py-1.5 rounded-lg flex items-center space-x-1"
                   >
                     <Upload className="w-3.5 h-3.5" />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, 
   ShieldCheck, 
@@ -8,29 +8,44 @@ import {
   ShoppingBag, 
   Wrench, 
   Wallet, 
-  Key, 
-  Bell, 
   LogOut, 
-  FileText,
   MapPin,
   Phone,
   Mail,
-  Edit2
+  AlertCircle
 } from 'lucide-react';
 import { UserAccount } from '../types';
+import { apiUpdateUser } from '../services/api';
 
 interface ProfilePageProps {
   currentUser?: UserAccount | null;
   onLogout?: () => void;
   onOpenAuth?: () => void;
+  onUserUpdated?: (user: UserAccount) => void;
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({
   currentUser,
   onLogout,
-  onOpenAuth
+  onOpenAuth,
+  onUserUpdated
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'escrow'>('profile');
+  const [name, setName] = useState(currentUser?.name || '');
+  const [phone, setPhone] = useState(currentUser?.phone || '');
+  const [location, setLocation] = useState(currentUser?.location || '');
+  const [bio, setBio] = useState(currentUser?.bio || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveFeedback, setSaveFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  useEffect(() => {
+    if (currentUser) {
+      setName(currentUser.name || '');
+      setPhone(currentUser.phone || '');
+      setLocation(currentUser.location || '');
+      setBio(currentUser.bio || '');
+    }
+  }, [currentUser]);
 
   if (!currentUser) {
     return (
@@ -58,6 +73,21 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     );
   }
 
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setSaveFeedback(null);
+    try {
+      const updated = await apiUpdateUser(currentUser.id, { name, phone, location, bio });
+      if (onUserUpdated) onUserUpdated(updated);
+      setSaveFeedback({ type: 'success', message: 'Profile changes saved to your account.' });
+    } catch (err: any) {
+      setSaveFeedback({ type: 'error', message: err.message || 'Could not update profile.' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="py-10 bg-[#EAECF0]/50 min-h-screen">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -73,9 +103,11 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 alt={currentUser.name}
                 className="w-24 h-24 rounded-3xl object-cover border-4 border-[#FE7F2D] shadow-md"
               />
-              <div className="absolute -bottom-2 -right-2 bg-[#FE7F2D] text-[#000000] text-xs font-black px-2 py-0.5 rounded-full flex items-center shadow-xs">
-                ✓ Verified
-              </div>
+              {currentUser.verified && (
+                <div className="absolute -bottom-2 -right-2 bg-[#FE7F2D] text-[#000000] text-xs font-black px-2 py-0.5 rounded-full flex items-center shadow-xs">
+                  ✓ Verified
+                </div>
+              )}
             </div>
 
             {/* Basic Info */}
@@ -93,9 +125,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
                 {/* Verified User Badge & Actions */}
                 <div className="flex items-center space-x-2 mx-auto sm:mx-0">
-                  <div className="inline-flex items-center space-x-1.5 bg-emerald-50 text-emerald-800 border border-emerald-300 px-3.5 py-1.5 rounded-full text-xs font-extrabold">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>✓ Verified User</span>
+                  <div className={`inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-full text-xs font-extrabold border ${
+                    currentUser.verified
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      : 'bg-amber-50 text-amber-800 border-amber-300'
+                  }`}>
+                    <ShieldCheck className={`w-4 h-4 ${currentUser.verified ? 'text-emerald-600' : 'text-amber-600'}`} />
+                    <span>{currentUser.verified ? '✓ Verified User' : 'KYC Pending'}</span>
                   </div>
                   {onLogout && (
                     <button
@@ -158,7 +194,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
 
           <div className="bg-[#233D4D] text-white p-5 rounded-2xl text-center space-y-1">
             <Wallet className="w-5 h-5 text-[#FE7F2D] mx-auto" />
-            <span className="text-2xl font-display font-extrabold text-white block">₹{currentUser.earnings.toLocaleString()}</span>
+            <span className="text-2xl font-display font-extrabold text-white block">₹{(currentUser.earnings ?? 0).toLocaleString()}</span>
             <span className="text-[11px] font-bold text-[#EAECF0] uppercase">Total Earnings</span>
           </div>
         </div>
@@ -193,35 +229,96 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
 
           {activeTab === 'profile' && (
-            <div className="space-y-4 text-xs">
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+              {saveFeedback && (
+                <div className={`p-3 rounded-xl font-bold flex items-center space-x-2 border ${
+                  saveFeedback.type === 'success'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                    : 'bg-red-50 border-red-200 text-red-800'
+                }`}>
+                  {saveFeedback.type === 'success'
+                    ? <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                    : <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />}
+                  <span>{saveFeedback.message}</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-500 font-bold mb-1">Full Legal Name</label>
-                  <input type="text" readOnly value={currentUser.name} className="w-full bg-[#EAECF0] p-2.5 rounded-xl font-bold text-[#000000]" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full bg-[#EAECF0] p-2.5 rounded-xl font-bold text-[#000000] outline-none focus:ring-2 focus:ring-[#FE7F2D]"
+                  />
                 </div>
                 <div>
                   <label className="block text-gray-500 font-bold mb-1">Email Address</label>
-                  <input type="email" readOnly value={currentUser.email} className="w-full bg-[#EAECF0] p-2.5 rounded-xl font-bold text-[#000000]" />
+                  <input
+                    type="email"
+                    readOnly
+                    value={currentUser.email}
+                    className="w-full bg-[#EAECF0]/60 p-2.5 rounded-xl font-bold text-gray-500 cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Phone Number</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-[#EAECF0] p-2.5 rounded-xl font-bold text-[#000000] outline-none focus:ring-2 focus:ring-[#FE7F2D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-500 font-bold mb-1">Location / Area</label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full bg-[#EAECF0] p-2.5 rounded-xl font-bold text-[#000000] outline-none focus:ring-2 focus:ring-[#FE7F2D]"
+                  />
                 </div>
               </div>
+
+              <div>
+                <label className="block text-gray-500 font-bold mb-1">Bio & Circular Activity</label>
+                <textarea
+                  rows={2}
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  className="w-full bg-[#EAECF0] p-2.5 rounded-xl font-medium text-[#000000] outline-none focus:ring-2 focus:ring-[#FE7F2D]"
+                />
+              </div>
+
               <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                <span className="text-gray-500">Need to update bank or contact information?</span>
-                <button onClick={() => alert('Profile settings updated successfully.')} className="bg-[#FE7F2D] text-[#000000] font-black px-4 py-2 rounded-xl">
-                  Save Changes
+                <span className="text-gray-500">Changes persist directly to your ReLoop account</span>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="bg-[#FE7F2D] hover:bg-[#FE7F2D]/90 disabled:opacity-50 text-[#000000] font-black px-5 py-2.5 rounded-xl transition-all"
+                >
+                  {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
-            </div>
+            </form>
           )}
 
           {activeTab === 'security' && (
             <div className="space-y-3 text-xs">
-              <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between">
+              <div className={`border p-3 rounded-xl flex items-center justify-between ${
+                currentUser.verified ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'
+              }`}>
                 <div>
-                  <span className="font-bold text-emerald-950 block">Government Aadhaar / ID Card</span>
-                  <span className="text-[11px] text-emerald-800">Verified by ReLoop Trust Engine</span>
+                  <span className="font-bold text-[#000000] block">Government Aadhaar / ID Card</span>
+                  <span className="text-[11px] text-[#233D4D]">Verified by ReLoop Trust Engine</span>
                 </div>
-                <span className="text-xs font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">
-                  ✓ Approved
+                <span className={`text-xs font-black px-2 py-0.5 rounded ${
+                  currentUser.verified ? 'text-emerald-700 bg-emerald-100' : 'text-amber-800 bg-amber-100'
+                }`}>
+                  {currentUser.verified ? '✓ Approved' : 'Pending Review'}
                 </span>
               </div>
               <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl flex items-center justify-between">
@@ -255,3 +352,4 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     </div>
   );
 };
+

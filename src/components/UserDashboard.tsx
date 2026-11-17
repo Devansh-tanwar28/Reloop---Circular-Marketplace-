@@ -1,22 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Repeat, 
   ShoppingBag, 
   Wrench, 
   Wallet, 
-  MessageSquare, 
   PlusCircle, 
-  ArrowRight, 
-  CheckCircle, 
-  Clock, 
   MapPin, 
-  ShieldCheck, 
   RotateCcw,
-  Sparkles,
   Lock,
-  ArrowUpRight
+  Bell,
+  ArrowRight,
+  CheckCircle
 } from 'lucide-react';
 import { Booking, RepairRequest, ResellProduct, UserAccount, NavigationPage } from '../types';
+import {
+  apiUpdateBookingStatus,
+  apiGetTransactions,
+  apiGetNotifications,
+  apiMarkNotificationRead
+} from '../services/api';
 
 interface UserDashboardProps {
   currentUser: UserAccount;
@@ -27,7 +29,17 @@ interface UserDashboardProps {
   onOpenCreateListing: () => void;
   onOpenRepairRequest: () => void;
   onOpenDamageClaimDemo: () => void;
+  onBookingStatusUpdated?: (bookingId: string, newStatus: Booking['status'], depositStatus: Booking['depositStatus']) => void;
 }
+
+const BOOKING_STAGES: Booking['status'][] = [
+  'Booking Confirmed',
+  'Pickup Scheduled',
+  'Rental Active',
+  'Return Product',
+  'Condition Verified',
+  'Deposit Refunded'
+];
 
 export const UserDashboard: React.FC<UserDashboardProps> = ({
   currentUser,
@@ -37,8 +49,44 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   onNavigate,
   onOpenCreateListing,
   onOpenRepairRequest,
-  onOpenDamageClaimDemo
+  onOpenDamageClaimDemo,
+  onBookingStatusUpdated
 }) => {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [updatingBookingId, setUpdatingBookingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiGetTransactions(currentUser.id).then(setTransactions).catch(() => {});
+    apiGetNotifications(currentUser.id).then(setNotifications).catch(() => {});
+  }, [currentUser.id, bookings]);
+
+  const handleAdvanceStatus = async (b: Booking) => {
+    const idx = BOOKING_STAGES.indexOf(b.status);
+    if (idx === -1 || idx >= BOOKING_STAGES.length - 1) return;
+    const nextStatus = BOOKING_STAGES[idx + 1];
+    setUpdatingBookingId(b.id);
+    try {
+      const res = await apiUpdateBookingStatus(b.id, nextStatus);
+      if (onBookingStatusUpdated) {
+        onBookingStatusUpdated(b.id, nextStatus, res.depositStatus || b.depositStatus);
+      }
+      const [txList, ntList] = await Promise.all([
+        apiGetTransactions(currentUser.id),
+        apiGetNotifications(currentUser.id)
+      ]);
+      setTransactions(txList);
+      setNotifications(ntList);
+    } catch (err) {
+      console.warn('Could not advance booking status:', err);
+    } finally {
+      setUpdatingBookingId(null);
+    }
+  };
+
+  const activeBookingsCount = bookings.filter(b => b.status !== 'Deposit Refunded').length;
+  const completedBookingsCount = bookings.filter(b => b.status === 'Deposit Refunded').length;
+
   return (
     <div className="py-10 bg-[#EAECF0]/50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -52,9 +100,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                 alt={currentUser.name}
                 className="w-16 h-16 rounded-2xl object-cover border-2 border-[#FE7F2D] shadow-sm"
               />
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#FE7F2D] text-[#000000] rounded-full flex items-center justify-center text-xs font-black">
-                ✓
-              </span>
+              {currentUser.verified && (
+                <span className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#FE7F2D] text-[#000000] rounded-full flex items-center justify-center text-xs font-black">
+                  ✓
+                </span>
+              )}
             </div>
             <div>
               <div className="flex items-center space-x-2">
@@ -62,7 +112,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                   Welcome back, {currentUser.name}
                 </h1>
                 <span className="bg-emerald-50 text-emerald-800 text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border border-emerald-200">
-                  Verified Member
+                  {currentUser.verified ? 'Verified Member' : 'KYC Pending'}
                 </span>
               </div>
               <p className="text-xs text-[#233D4D] mt-0.5">
@@ -109,19 +159,21 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             <div className="text-2xl font-display font-extrabold text-[#000000]">
               {bookings.length}
             </div>
-            <span className="text-[10px] text-emerald-700 font-bold block">1 Active • 1 Completed</span>
+            <span className="text-[10px] text-emerald-700 font-bold block">
+              {activeBookingsCount} Active • {completedBookingsCount} Completed
+            </span>
           </div>
 
           {/* Card 2: My Listings */}
           <div className="bg-white p-5 rounded-2xl border border-[#233D4D]/10 shadow-xs space-y-2">
             <div className="flex items-center justify-between text-gray-500">
-              <span className="text-[11px] uppercase font-bold tracking-wider text-[#233D4D]">My Listings</span>
+              <span className="text-[11px] uppercase font-bold tracking-wider text-[#233D4D]">Resell Market</span>
               <ShoppingBag className="w-4 h-4 text-[#233D4D]" />
             </div>
             <div className="text-2xl font-display font-extrabold text-[#000000]">
               {resellListings.length}
             </div>
-            <span className="text-[10px] text-gray-500 block">4 Inquiries Received</span>
+            <span className="text-[10px] text-gray-500 block">Active Verified Items</span>
           </div>
 
           {/* Card 3: Repair Requests */}
@@ -133,7 +185,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             <div className="text-2xl font-display font-extrabold text-[#000000]">
               {repairs.length}
             </div>
-            <span className="text-[10px] text-amber-700 font-bold block">1 Quotation Pending</span>
+            <span className="text-[10px] text-amber-700 font-bold block">
+              {repairs.filter(r => r.status === 'Quotation').length} Quotation Pending
+            </span>
           </div>
 
           {/* Card 4: Wallet Balance */}
@@ -143,7 +197,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               <Wallet className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-2xl font-display font-extrabold text-[#000000]">
-              ₹{currentUser.walletBalance.toLocaleString()}
+              ₹{(currentUser.walletBalance ?? 0).toLocaleString()}
             </div>
             <span className="text-[10px] text-gray-500 block">Available for checkout</span>
           </div>
@@ -155,7 +209,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
               <Lock className="w-4 h-4 text-[#FE7F2D]" />
             </div>
             <div className="text-2xl font-display font-extrabold text-white">
-              ₹{currentUser.depositLocked.toLocaleString()}
+              ₹{(currentUser.depositLocked ?? 0).toLocaleString()}
             </div>
             <span className="text-[10px] text-[#EAECF0] block">Auto-refund on return</span>
           </div>
@@ -177,60 +231,79 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             </div>
 
             <div className="space-y-4">
-              {bookings.map((b) => (
-                <div 
-                  key={b.id}
-                  className="bg-white rounded-2xl p-5 shadow-xs border border-[#233D4D]/10 space-y-4"
-                >
-                  <div className="flex items-center space-x-4">
-                    <img 
-                      src={b.productImage} 
-                      alt={b.productName} 
-                      className="w-16 h-16 rounded-xl object-cover border border-[#EAECF0]"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold text-gray-500 font-mono">ID: {b.id}</span>
-                        <span className="text-xs font-extrabold bg-[#FE7F2D]/20 text-[#000000] px-2.5 py-0.5 rounded-full border border-[#FE7F2D]/30">
-                          {b.status}
-                        </span>
+              {bookings.map((b) => {
+                const stageIdx = BOOKING_STAGES.indexOf(b.status);
+                const nextStage = stageIdx >= 0 && stageIdx < BOOKING_STAGES.length - 1 ? BOOKING_STAGES[stageIdx + 1] : null;
+                return (
+                  <div 
+                    key={b.id}
+                    className="bg-white rounded-2xl p-5 shadow-xs border border-[#233D4D]/10 space-y-4"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <img 
+                        src={b.productImage} 
+                        alt={b.productName} 
+                        className="w-16 h-16 rounded-xl object-cover border border-[#EAECF0]"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-gray-500 font-mono">ID: {b.id}</span>
+                          <span className="text-xs font-extrabold bg-[#FE7F2D]/20 text-[#000000] px-2.5 py-0.5 rounded-full border border-[#FE7F2D]/30">
+                            {b.status}
+                          </span>
+                        </div>
+                        <h4 className="font-display font-extrabold text-sm text-[#000000] truncate mt-0.5">
+                          {b.productName}
+                        </h4>
+                        <p className="text-xs text-[#233D4D] flex items-center space-x-1 mt-0.5">
+                          <MapPin className="w-3 h-3 text-[#FE7F2D]" />
+                          <span>Owner: {b.ownerName} ({b.location})</span>
+                        </p>
                       </div>
-                      <h4 className="font-display font-extrabold text-sm text-[#000000] truncate mt-0.5">
-                        {b.productName}
-                      </h4>
-                      <p className="text-xs text-[#233D4D] flex items-center space-x-1 mt-0.5">
-                        <MapPin className="w-3 h-3 text-[#FE7F2D]" />
-                        <span>Owner: {b.ownerName} ({b.location})</span>
-                      </p>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-3 gap-2 bg-[#EAECF0] p-3 rounded-xl text-xs">
-                    <div>
-                      <span className="text-[10px] text-gray-500 block">Duration</span>
-                      <span className="font-bold text-[#000000]">{b.days} Days</span>
+                    <div className="grid grid-cols-3 gap-2 bg-[#EAECF0] p-3 rounded-xl text-xs">
+                      <div>
+                        <span className="text-[10px] text-gray-500 block">Duration</span>
+                        <span className="font-bold text-[#000000]">{b.days} Days</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-500 block">Return Due</span>
+                        <span className="font-bold text-[#233D4D]">{b.returnDate.split(' ')[0]}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-gray-500 block">Escrow Deposit</span>
+                        <span className="font-bold text-emerald-700">₹{b.securityDeposit} ({b.depositStatus})</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[10px] text-gray-500 block">Return Due</span>
-                      <span className="font-bold text-[#233D4D]">{b.returnDate.split(' ')[0]}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-gray-500 block">Escrow Deposit</span>
-                      <span className="font-bold text-emerald-700">₹{b.securityDeposit}</span>
-                    </div>
-                  </div>
 
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-xs text-gray-500">Pickup check-in verified with 4 photos</span>
-                    <button
-                      onClick={onOpenDamageClaimDemo}
-                      className="text-xs font-bold bg-[#233D4D] text-white hover:bg-[#FE7F2D] hover:text-[#000000] px-3.5 py-1.5 rounded-lg transition-colors"
-                    >
-                      Inspect Condition Log
-                    </button>
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                      <button
+                        onClick={onOpenDamageClaimDemo}
+                        className="text-xs font-bold bg-[#EAECF0] text-[#233D4D] hover:bg-gray-200 px-3.5 py-1.5 rounded-lg transition-colors"
+                      >
+                        Inspect Condition Log
+                      </button>
+
+                      {nextStage ? (
+                        <button
+                          disabled={updatingBookingId === b.id}
+                          onClick={() => handleAdvanceStatus(b)}
+                          className="text-xs font-bold bg-[#233D4D] text-white hover:bg-[#FE7F2D] hover:text-[#000000] px-3.5 py-1.5 rounded-lg transition-colors flex items-center space-x-1 disabled:opacity-50"
+                        >
+                          <span>{updatingBookingId === b.id ? 'Updating...' : `Advance → ${nextStage}`}</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      ) : (
+                        <span className="text-xs font-bold text-emerald-700 flex items-center space-x-1">
+                          <CheckCircle className="w-3.5 h-3.5" />
+                          <span>Escrow Released</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -271,7 +344,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
                   <div className="bg-[#EAECF0] p-2.5 rounded-xl flex items-center justify-between text-xs">
                     <span className="text-gray-500">Provider: {r.providerName || 'TechFix'}</span>
-                    <span className="font-bold text-[#000000]">Quotation: ₹{r.quotationAmount}</span>
+                    <span className="font-bold text-[#000000]">
+                      {r.quotationAmount ? `Quotation: ₹${r.quotationAmount}` : 'Awaiting Quote'}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -304,7 +379,72 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
         </div>
 
+        {/* Bottom 2-Column Live Activity: Wallet Escrow Ledger & Notifications */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Escrow Transactions Ledger */}
+          <div className="bg-white rounded-3xl p-6 shadow-xs border border-[#233D4D]/15 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-extrabold text-base text-[#000000] flex items-center space-x-2">
+                <Wallet className="w-4 h-4 text-[#FE7F2D]" />
+                <span>Escrow & Wallet Ledger</span>
+              </h3>
+              <span className="text-[11px] font-bold text-gray-500">{transactions.length} entries</span>
+            </div>
+            <div className="space-y-2.5 max-h-64 overflow-y-auto">
+              {transactions.length > 0 ? transactions.map(tx => (
+                <div key={tx.id} className="bg-[#EAECF0]/70 p-3 rounded-xl flex items-center justify-between text-xs">
+                  <div className="min-w-0 pr-3">
+                    <span className="font-bold text-[#000000] block truncate">{tx.description}</span>
+                    <span className="text-[10px] text-gray-500 font-mono uppercase">{tx.type} • {tx.referenceId || tx.id}</span>
+                  </div>
+                  <span className="font-black text-[#233D4D] shrink-0">₹{Number(tx.amount).toLocaleString()}</span>
+                </div>
+              )) : (
+                <p className="text-xs text-gray-500">No wallet transactions recorded yet.</p>
+              )}
+            </div>
+          </div>
+
+          {/* Real-time Notifications */}
+          <div className="bg-white rounded-3xl p-6 shadow-xs border border-[#233D4D]/15 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-extrabold text-base text-[#000000] flex items-center space-x-2">
+                <Bell className="w-4 h-4 text-[#FE7F2D]" />
+                <span>Account Notifications</span>
+              </h3>
+              <span className="text-[11px] font-bold text-[#FE7F2D]">
+                {notifications.filter(n => !n.read).length} unread
+              </span>
+            </div>
+            <div className="space-y-2.5 max-h-64 overflow-y-auto">
+              {notifications.length > 0 ? notifications.map(nt => (
+                <div
+                  key={nt.id}
+                  onClick={async () => {
+                    if (!nt.read) {
+                      await apiMarkNotificationRead(nt.id).catch(() => {});
+                      setNotifications(prev => prev.map(n => n.id === nt.id ? { ...n, read: true } : n));
+                    }
+                  }}
+                  className={`p-3 rounded-xl text-xs border cursor-pointer transition-colors ${
+                    nt.read ? 'bg-[#EAECF0]/40 border-transparent' : 'bg-[#FE7F2D]/10 border-[#FE7F2D]/30'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[#000000]">{nt.title}</span>
+                    {!nt.read && <span className="w-2 h-2 rounded-full bg-[#FE7F2D]" />}
+                  </div>
+                  <p className="text-[11px] text-[#233D4D] mt-0.5">{nt.message}</p>
+                </div>
+              )) : (
+                <p className="text-xs text-gray-500">You're all caught up — no unread notifications.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
 };
+

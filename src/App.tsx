@@ -68,10 +68,12 @@ export default function App() {
   // Modal States
   const [selectedRentalProduct, setSelectedRentalProduct] = useState<RentalProduct | null>(null);
   const [bookingProduct, setBookingProduct] = useState<RentalProduct | null>(null);
+  const [bookingDays, setBookingDays] = useState<number>(3);
   const [isCreateRepairOpen, setIsCreateRepairOpen] = useState(false);
   const [repairPreselectCategory, setRepairPreselectCategory] = useState<ProductCategory | undefined>(undefined);
   const [repairPreselectProvider, setRepairPreselectProvider] = useState<string | undefined>(undefined);
   const [isCreateListingOpen, setIsCreateListingOpen] = useState(false);
+  const [listingInitialMode, setListingInitialMode] = useState<'resell' | 'rent'>('resell');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Toast Notification state
@@ -82,6 +84,15 @@ export default function App() {
     setTimeout(() => {
       setToastMessage(null);
     }, 4000);
+  };
+
+  const refreshCurrentUser = async () => {
+    try {
+      const user = await apiGetCurrentUser();
+      if (user) setCurrentUser(user);
+    } catch {
+      // Ignore if unauthenticated
+    }
   };
 
   // Load actual data from SQLite REST Backend on mount
@@ -128,20 +139,49 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const openCreateListing = (mode: 'resell' | 'rent' = 'resell') => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setListingInitialMode(mode);
+    setIsCreateListingOpen(true);
+  };
+
+  const handleLogout = () => {
+    setAuthToken(null);
+    setCurrentUser(null);
+    showToast('Logged out of ReLoop.');
+  };
+
   const handleOpenRentalDetail = (product: RentalProduct) => {
     setSelectedRentalProduct(product);
   };
 
-  const handleStartBooking = (product: RentalProduct) => {
+  const handleStartBooking = (product: RentalProduct, days = 3) => {
     setSelectedRentalProduct(null);
+    setBookingDays(days);
     setBookingProduct(product);
   };
 
   const handleBookingConfirmed = (newBooking: Booking) => {
-    setBookings([newBooking, ...bookings]);
+    setBookings(prev => [newBooking, ...prev]);
     setBookingProduct(null);
+    refreshCurrentUser();
     showToast(`Rental for ${newBooking.productName} confirmed! Security deposit placed in Escrow.`);
     setCurrentPage('dashboard');
+  };
+
+  const handleBookingStatusUpdated = (
+    bookingId: string,
+    newStatus: Booking['status'],
+    depositStatus: Booking['depositStatus']
+  ) => {
+    setBookings(prev =>
+      prev.map(b => (b.id === bookingId ? { ...b, status: newStatus, depositStatus } : b))
+    );
+    refreshCurrentUser();
+    showToast(`Booking ${bookingId} updated to: ${newStatus}`);
   };
 
   const handleOpenCreateRepair = (category?: ProductCategory, providerName?: string) => {
@@ -151,7 +191,7 @@ export default function App() {
   };
 
   const handleRepairSubmitted = (newReq: RepairRequest) => {
-    setRepairRequests([newReq, ...repairRequests]);
+    setRepairRequests(prev => [newReq, ...prev]);
     showToast(`Repair request for ${newReq.productName} submitted to technicians!`);
   };
 
@@ -161,17 +201,25 @@ export default function App() {
     } catch (err) {
       console.warn('API approve error:', err);
     }
-    setRepairRequests(repairRequests.map(r => r.id === reqId ? { ...r, status: 'Approved' } : r));
+    setRepairRequests(prev => prev.map(r => (r.id === reqId ? { ...r, status: 'Approved' } : r)));
     showToast('Quotation approved! Technician scheduled to begin repair.');
   };
 
   const handleListingCreated = (newListing: ResellProduct) => {
-    setResellProducts([newListing, ...resellProducts]);
+    setResellProducts(prev => [newListing, ...prev]);
     showToast(`Listing for ${newListing.name} published to Resell marketplace!`);
     setCurrentPage('resell');
   };
 
+  const handleRentalCreated = (newRental: RentalProduct) => {
+    setRentalProducts(prev => [newRental, ...prev]);
+    showToast(`Rental listing for ${newRental.name} published to Rent marketplace!`);
+    setCurrentPage('rent');
+  };
+
   const handlePurchaseSuccess = (product: ResellProduct) => {
+    setResellProducts(prev => prev.filter(p => p.id !== product.id));
+    refreshCurrentUser();
     showToast(`Order confirmed for ${product.name}! Funds held in Buyer Protection Escrow.`);
   };
 
@@ -200,20 +248,12 @@ export default function App() {
       <Navbar 
         currentPage={currentPage}
         onNavigate={handleNavigate}
-        onOpenCreateListing={() => {
-          if (!currentUser) {
-            setIsAuthModalOpen(true);
-          } else {
-            setIsCreateListingOpen(true);
-          }
-        }}
+        onOpenCreateListing={openCreateListing}
         onOpenRepairRequest={() => handleOpenCreateRepair()}
         currentUser={currentUser}
         onOpenAuth={() => setIsAuthModalOpen(true)}
-        onLogout={() => {
-          setCurrentUser(null);
-          showToast('Logged out of ReLoop.');
-        }}
+        onLogout={handleLogout}
+        onSearchOpen={() => handleNavigate('rent')}
       />
 
       {/* Page Routing */}
@@ -224,10 +264,7 @@ export default function App() {
           <>
             <HeroSection 
               onNavigate={handleNavigate}
-              onSearchSubmit={(q) => {
-                setSearchQuery(q);
-                handleNavigate('rent');
-              }}
+              onOpenCreateListing={() => openCreateListing('resell')}
             />
 
             <CoreServices onNavigate={handleNavigate} />
@@ -236,7 +273,8 @@ export default function App() {
               <RentMarketplace 
                 products={rentalProducts}
                 onSelectProduct={handleOpenRentalDetail}
-                onRentNow={handleStartBooking}
+                onOpenBooking={handleStartBooking}
+                onOpenCreateRental={() => openCreateListing('rent')}
                 initialSearchQuery={searchQuery}
               />
             </div>
@@ -250,7 +288,8 @@ export default function App() {
           <RentMarketplace 
             products={rentalProducts}
             onSelectProduct={handleOpenRentalDetail}
-            onRentNow={handleStartBooking}
+            onOpenBooking={handleStartBooking}
+            onOpenCreateRental={() => openCreateListing('rent')}
             initialSearchQuery={searchQuery}
           />
         )}
@@ -269,14 +308,10 @@ export default function App() {
         {currentPage === 'resell' && (
           <ResellMarketplace 
             products={resellProducts}
+            currentUserId={currentUser?.id}
             onPurchaseSuccess={handlePurchaseSuccess}
-            onOpenCreateListing={() => {
-              if (!currentUser) {
-                setIsAuthModalOpen(true);
-              } else {
-                setIsCreateListingOpen(true);
-              }
-            }}
+            onOfferSent={(prod) => showToast(`Offer inquiry sent to ${prod.seller.name}!`)}
+            onOpenCreateListing={() => openCreateListing('resell')}
           />
         )}
 
@@ -303,7 +338,7 @@ export default function App() {
         )}
 
         {/* 8. AI INSIGHTS DASHBOARD */}
-        {currentPage === 'ai-features' && (
+        {currentPage === 'ai-insights' && (
           <AiInsightsDashboard />
         )}
 
@@ -315,15 +350,10 @@ export default function App() {
             repairs={repairRequests}
             resellListings={resellProducts}
             onNavigate={handleNavigate}
-            onOpenCreateListing={() => {
-              if (!currentUser) {
-                setIsAuthModalOpen(true);
-              } else {
-                setIsCreateListingOpen(true);
-              }
-            }}
+            onOpenCreateListing={() => openCreateListing('resell')}
             onOpenRepairRequest={() => handleOpenCreateRepair()}
             onOpenDamageClaimDemo={() => handleNavigate('damage-claim')}
+            onBookingStatusUpdated={handleBookingStatusUpdated}
           />
         )}
 
@@ -331,11 +361,12 @@ export default function App() {
         {currentPage === 'profile' && (
           <ProfilePage 
             currentUser={currentUser}
-            onLogout={() => {
-              setCurrentUser(null);
-              showToast('Logged out of ReLoop.');
-            }}
+            onLogout={handleLogout}
             onOpenAuth={() => setIsAuthModalOpen(true)}
+            onUserUpdated={(updatedUser) => {
+              setCurrentUser(updatedUser);
+              showToast('Account profile updated.');
+            }}
           />
         )}
 
@@ -351,8 +382,8 @@ export default function App() {
         <ProductDetailModal 
           product={selectedRentalProduct}
           onClose={() => setSelectedRentalProduct(null)}
-          onRentNow={handleStartBooking}
-          onOpenBooking={(prod) => handleStartBooking(prod)}
+          onRentNow={(prod) => handleStartBooking(prod, 3)}
+          onOpenBooking={handleStartBooking}
         />
       )}
 
@@ -360,6 +391,7 @@ export default function App() {
       {bookingProduct && (
         <BookingModal 
           product={bookingProduct}
+          initialDays={bookingDays}
           onClose={() => setBookingProduct(null)}
           onBookingConfirmed={handleBookingConfirmed}
           currentUserId={currentUser?.id || 'usr-101'}
@@ -373,15 +405,18 @@ export default function App() {
           onSubmit={handleRepairSubmitted}
           preselectedCategory={repairPreselectCategory}
           preselectedProvider={repairPreselectProvider}
+          currentUserId={currentUser?.id}
         />
       )}
 
-      {/* Modal D: Create Resell Listing Modal */}
+      {/* Modal D: Create Resell / Rental Listing Modal */}
       {isCreateListingOpen && (
         <CreateListingModal 
           currentUser={currentUser || INITIAL_USER}
+          initialMode={listingInitialMode}
           onClose={() => setIsCreateListingOpen(false)}
           onListingCreated={handleListingCreated}
+          onRentalCreated={handleRentalCreated}
         />
       )}
 

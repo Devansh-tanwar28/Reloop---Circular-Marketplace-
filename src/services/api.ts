@@ -91,6 +91,47 @@ export const apiGetAllUsers = async (): Promise<UserAccount[]> => {
   return res.json();
 };
 
+export const apiUpdateUser = async (
+  userId: string,
+  payload: { name?: string; phone?: string; location?: string; bio?: string }
+): Promise<UserAccount> => {
+  const res = await fetch(`/api/users/${userId}`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to update profile');
+  }
+  return res.json();
+};
+
+export const apiGetTransactions = async (userId?: string) => {
+  const url = new URL('/api/transactions', window.location.origin);
+  if (userId) url.searchParams.set('userId', userId);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error('Failed to fetch transactions');
+  return res.json();
+};
+
+export const apiGetNotifications = async (userId?: string) => {
+  const url = new URL('/api/notifications', window.location.origin);
+  if (userId) url.searchParams.set('userId', userId);
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error('Failed to fetch notifications');
+  return res.json();
+};
+
+export const apiMarkNotificationRead = async (id: string) => {
+  const res = await fetch(`/api/notifications/${id}/read`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to update notification');
+  return res.json();
+};
+
 // -------------------------------------------------------------
 // 2. RENT MARKETPLACE API
 // -------------------------------------------------------------
@@ -113,7 +154,7 @@ export const apiGetRentals = async (params?: {
   return res.json();
 };
 
-export const apiCreateRental = async (payload: Partial<RentalProduct> & { ownerId?: string }) => {
+export const apiCreateRental = async (payload: Partial<RentalProduct> & { ownerId?: string }): Promise<RentalProduct> => {
   const res = await fetch('/api/rentals', {
     method: 'POST',
     headers: getHeaders(),
@@ -246,7 +287,7 @@ export const apiGetResellProducts = async (params?: { category?: string; search?
   return res.json();
 };
 
-export const apiCreateResellListing = async (payload: Partial<ResellProduct> & { sellerId?: string }) => {
+export const apiCreateResellListing = async (payload: Partial<ResellProduct> & { sellerId?: string }): Promise<ResellProduct> => {
   const res = await fetch('/api/resell', {
     method: 'POST',
     headers: getHeaders(),
@@ -255,6 +296,19 @@ export const apiCreateResellListing = async (payload: Partial<ResellProduct> & {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || 'Failed to create resell listing');
+  }
+  return res.json();
+};
+
+export const apiCreateResellOffer = async (productId: string, payload: { buyerId?: string; offerAmount: number; message?: string }) => {
+  const res = await fetch(`/api/resell/${productId}/offer`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to submit offer');
   }
   return res.json();
 };
@@ -281,6 +335,53 @@ export const apiGetAdminOverview = async () => {
   return res.json();
 };
 
+export const apiGetAdminUsers = async () => {
+  const res = await fetch('/api/admin/users');
+  if (!res.ok) throw new Error('Failed to fetch users');
+  return res.json();
+};
+
+export const apiVerifyAdminUser = async (userId: string, status: 'approved' | 'rejected') => {
+  const res = await fetch(`/api/admin/users/${userId}/verify`, {
+    method: 'PATCH',
+    headers: getHeaders(),
+    body: JSON.stringify({ status }),
+  });
+  if (!res.ok) throw new Error('Failed to update verification status');
+  return res.json();
+};
+
+export const apiGetAdminListings = async () => {
+  const res = await fetch('/api/admin/listings');
+  if (!res.ok) throw new Error('Failed to fetch listings');
+  return res.json();
+};
+
+export const apiDeleteAdminListing = async (type: 'rental' | 'resell', id: string) => {
+  const res = await fetch(`/api/admin/listings/${type}/${id}`, {
+    method: 'DELETE',
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to remove listing');
+  return res.json();
+};
+
+export const apiGetAdminTransactions = async () => {
+  const res = await fetch('/api/admin/transactions');
+  if (!res.ok) throw new Error('Failed to fetch transactions');
+  return res.json();
+};
+
+export const apiAdminResolveClaim = async (claimId: string, decision: 'award_owner' | 'dismiss_refund') => {
+  const res = await fetch(`/api/claims/${claimId}/admin-decision`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({ decision }),
+  });
+  if (!res.ok) throw new Error('Failed to resolve claim');
+  return res.json();
+};
+
 export const apiCalculateRentVsBuy = async (params: {
   plannedDays: number;
   itemRetailPrice: number;
@@ -300,6 +401,7 @@ export const apiGetSmartPricing = async (params: {
   condition: string;
   originalPrice: number;
   ageMonths: number;
+  brand?: string;
 }) => {
   const res = await fetch('/api/ai/pricing-recommendation', {
     method: 'POST',
@@ -307,5 +409,19 @@ export const apiGetSmartPricing = async (params: {
     body: JSON.stringify(params),
   });
   if (!res.ok) throw new Error('Pricing recommendation failed');
+  return res.json();
+};
+
+export const apiInspectDamage = async (params: {
+  productName: string;
+  ownerNotes: string;
+  estimatedRepairCost: number;
+}) => {
+  const res = await fetch('/api/ai/damage-inspect', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error('Inspection failed');
   return res.json();
 };

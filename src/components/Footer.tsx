@@ -116,7 +116,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               </li>
               <li>
                 <button 
-                  onClick={() => onNavigate('ai-features')} 
+                  onClick={() => onNavigate('ai-insights')} 
                   className="hover:text-[#FE7F2D] transition-colors"
                 >
                   AI Insights & Smart Pricing

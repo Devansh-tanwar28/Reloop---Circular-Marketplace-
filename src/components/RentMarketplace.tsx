@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -12,7 +12,8 @@ import {
   Sparkles,
   Calendar,
   Layers,
-  ChevronDown
+  ChevronDown,
+  PlusCircle
 } from 'lucide-react';
 import { RentalProduct, ProductCategory, ProductCondition } from '../types';
 
@@ -20,14 +21,22 @@ interface RentMarketplaceProps {
   products: RentalProduct[];
   onSelectProduct: (product: RentalProduct) => void;
   onOpenBooking: (product: RentalProduct, days: number) => void;
+  onOpenCreateRental?: () => void;
+  initialSearchQuery?: string;
 }
 
 export const RentMarketplace: React.FC<RentMarketplaceProps> = ({
   products,
   onSelectProduct,
-  onOpenBooking
+  onOpenBooking,
+  onOpenCreateRental,
+  initialSearchQuery = ''
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
+
+  useEffect(() => {
+    setSearchQuery(initialSearchQuery);
+  }, [initialSearchQuery]);
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory>('All');
   const [selectedLocation, setSelectedLocation] = useState<string>('All');
   const [selectedCondition, setSelectedCondition] = useState<string>('All');
@@ -86,13 +95,25 @@ export const RentMarketplace: React.FC<RentMarketplaceProps> = ({
               </p>
             </div>
 
-            {/* Quick stats pill */}
-            <div className="flex items-center space-x-3 bg-white p-2 rounded-xl border border-[#233D4D]/10 text-xs font-bold text-[#233D4D] shadow-2xs">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>100% Escrow Protected</span>
-              <span className="text-gray-300">|</span>
-              <Camera className="w-4 h-4 text-[#FE7F2D]" />
-              <span>Photo Condition Verified</span>
+            {/* Quick stats pill & List for Rent action */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center space-x-3 bg-white p-2 rounded-xl border border-[#233D4D]/10 text-xs font-bold text-[#233D4D] shadow-2xs">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>100% Escrow Protected</span>
+                <span className="text-gray-300">|</span>
+                <Camera className="w-4 h-4 text-[#FE7F2D]" />
+                <span>Photo Condition Verified</span>
+              </div>
+              {onOpenCreateRental && (
+                <button
+                  id="btn-create-rental-listing"
+                  onClick={onOpenCreateRental}
+                  className="bg-[#233D4D] hover:bg-[#FE7F2D] hover:text-[#000000] text-white font-extrabold text-xs px-4 py-2.5 rounded-xl shadow-sm transition-all flex items-center space-x-1.5 shrink-0 active:scale-95"
+                >
+                  <PlusCircle className="w-4 h-4 text-[#FE7F2D]" />
+                  <span>List Gear for Rent</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

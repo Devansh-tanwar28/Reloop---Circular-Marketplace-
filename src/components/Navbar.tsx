@@ -13,16 +13,18 @@ import {
   Repeat, 
   ShoppingBag,
   SlidersHorizontal,
-  ChevronDown
+  ChevronDown,
+  LogOut
 } from 'lucide-react';
 import { NavigationPage, UserAccount } from '../types';
 
 interface NavbarProps {
   currentPage: NavigationPage;
   onNavigate: (page: NavigationPage) => void;
-  currentUser: UserAccount;
+  currentUser: UserAccount | null;
   onOpenAuth: (mode?: 'login' | 'signup') => void;
-  onOpenCreateListing: () => void;
+  onLogout?: () => void;
+  onOpenCreateListing: (mode?: 'rent' | 'resell') => void;
   onOpenRepairRequest: () => void;
   onSearchOpen?: () => void;
 }
@@ -32,6 +34,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onNavigate,
   currentUser,
   onOpenAuth,
+  onLogout,
   onOpenCreateListing,
   onOpenRepairRequest,
   onSearchOpen
@@ -117,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setCreateDropdownOpen(false)}
                 >
                   <button
-                    onClick={() => onNavigate('resell')}
+                    onClick={() => onOpenCreateListing('resell')}
                     className="w-full text-left px-4 py-2.5 hover:bg-[#EAECF0]/60 flex items-center space-x-2.5 text-xs font-semibold text-[#233D4D]"
                   >
                     <ShoppingBag className="w-4 h-4 text-[#FE7F2D]" />
@@ -137,7 +140,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   </button>
                   <button
-                    onClick={() => onNavigate('rent')}
+                    onClick={() => onOpenCreateListing('rent')}
                     className="w-full text-left px-4 py-2.5 hover:bg-[#EAECF0]/60 flex items-center space-x-2.5 text-xs font-semibold text-[#233D4D]"
                   >
                     <Repeat className="w-4 h-4 text-[#FE7F2D]" />
@@ -180,27 +183,39 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             {/* User Profile / Auth */}
             {currentUser ? (
-              <div 
-                id="btn-user-profile-trigger"
-                onClick={() => onNavigate('profile')}
-                className="flex items-center space-x-2.5 bg-black/20 hover:bg-black/40 p-1.5 pr-3 rounded-full cursor-pointer transition-all border border-white/10"
-              >
-                <div className="relative">
-                  <img 
-                    src={currentUser.avatar} 
-                    alt={currentUser.name} 
-                    className="w-7 h-7 rounded-full object-cover border border-[#FE7F2D]"
-                  />
-                  {currentUser.verified && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#FE7F2D] rounded-full flex items-center justify-center text-[8px] text-black font-black">
-                      ✓
-                    </span>
-                  )}
+              <div className="flex items-center space-x-2">
+                <div 
+                  id="btn-user-profile-trigger"
+                  onClick={() => onNavigate('profile')}
+                  className="flex items-center space-x-2.5 bg-black/20 hover:bg-black/40 p-1.5 pr-3 rounded-full cursor-pointer transition-all border border-white/10"
+                >
+                  <div className="relative">
+                    <img 
+                      src={currentUser.avatar} 
+                      alt={currentUser.name} 
+                      className="w-7 h-7 rounded-full object-cover border border-[#FE7F2D]"
+                    />
+                    {currentUser.verified && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-[#FE7F2D] rounded-full flex items-center justify-center text-[8px] text-black font-black">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-bold text-white leading-tight">{currentUser.name.split(' ')[0]}</span>
+                    <span className="text-[10px] text-[#FE7F2D] font-medium leading-none">₹{(currentUser.walletBalance ?? 0).toLocaleString()}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col text-left">
-                  <span className="text-xs font-bold text-white leading-tight">{currentUser.name.split(' ')[0]}</span>
-                  <span className="text-[10px] text-[#FE7F2D] font-medium leading-none">₹{currentUser.walletBalance.toLocaleString()}</span>
-                </div>
+                {onLogout && (
+                  <button
+                    id="btn-nav-logout"
+                    onClick={onLogout}
+                    title="Sign Out"
+                    className="p-2 rounded-full text-[#EAECF0] hover:text-[#FE7F2D] hover:bg-white/10 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex items-center space-x-2">

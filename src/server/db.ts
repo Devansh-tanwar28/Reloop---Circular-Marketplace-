@@ -1,8 +1,20 @@
 import { DatabaseSync } from 'node:sqlite';
+import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import bcrypt from 'bcryptjs';
 
-const dbPath = path.resolve(process.cwd(), 'reloop.db');
+function resolveDatabasePath(): string {
+  const localPath = path.resolve(process.cwd(), 'reloop.db');
+  try {
+    fs.accessSync(process.cwd(), fs.constants.W_OK);
+    return localPath;
+  } catch {
+    return path.resolve(os.tmpdir(), 'reloop.db');
+  }
+}
+
+const dbPath = resolveDatabasePath();
 export const db = new DatabaseSync(dbPath);
 
 // Initialize relational tables and schema
@@ -314,6 +326,44 @@ function seedInitialData() {
       completed_rentals: 50,
       successful_sales: 25,
       repair_count: 50
+    },
+    {
+      id: 'usr-104',
+      name: 'Ananya Roy',
+      email: 'ananya.roy@outlook.com',
+      password: defaultPasswordHash,
+      phone: '+91 99123 44556',
+      role: 'renter',
+      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
+      location: 'Koramangala, Bengaluru',
+      bio: 'UI designer renting camera gear and lighting kits for weekend studio shoots.',
+      verified: 0,
+      rating: 4.85,
+      wallet_balance: 5000,
+      deposit_locked: 0,
+      earnings: 0,
+      completed_rentals: 2,
+      successful_sales: 1,
+      repair_count: 0
+    },
+    {
+      id: 'usr-105',
+      name: 'Karthik Raja',
+      email: 'karthik@techcorp.in',
+      password: defaultPasswordHash,
+      phone: '+91 97400 88991',
+      role: 'owner',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
+      location: 'Whitefield, Bengaluru',
+      bio: 'Hardware engineer listing precision measurement tools and workshop kits.',
+      verified: 0,
+      rating: 4.90,
+      wallet_balance: 7500,
+      deposit_locked: 0,
+      earnings: 3200,
+      completed_rentals: 3,
+      successful_sales: 0,
+      repair_count: 1
     }
   ];
 

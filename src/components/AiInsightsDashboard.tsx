@@ -1,42 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Sparkles, 
   Calculator, 
   Camera, 
-  CheckCircle, 
-  TrendingUp, 
-  HelpCircle, 
-  ArrowRight,
-  ShieldCheck,
-  Scale,
-  Zap,
-  ShoppingBag,
-  Repeat,
-  DollarSign
+  Zap
 } from 'lucide-react';
 import { ProductCategory, ProductCondition } from '../types';
+import { apiCalculateRentVsBuy, apiGetSmartPricing, apiInspectDamage } from '../services/api';
 
 export const AiInsightsDashboard: React.FC = () => {
   // Rent vs Buy Calculator State
   const [plannedDays, setPlannedDays] = useState<number>(4);
-  const [itemRetailPrice, setItemRetailPrice] = useState<number>(45000); // e.g. Sony Camera
+  const [itemRetailPrice, setItemRetailPrice] = useState<number>(45000);
   const [dailyRentalRate, setDailyRentalRate] = useState<number>(1200);
+  const [rentVsBuyResult, setRentVsBuyResult] = useState<any>(null);
 
   // Smart Pricing Tool State
   const [pricingCategory, setPricingCategory] = useState<ProductCategory>('Cameras');
   const [pricingCondition, setPricingCondition] = useState<ProductCondition>('Like New');
   const [pricingOriginalMRP, setPricingOriginalMRP] = useState<number>(65000);
   const [pricingAgeMonths, setPricingAgeMonths] = useState<number>(10);
+  const [pricingResult, setPricingResult] = useState<any>(null);
 
-  // Computed Rent vs Buy
-  const totalRentCost = (dailyRentalRate * plannedDays) + 150; // with fees
-  const savings = itemRetailPrice - totalRentCost;
-  const breakEvenDays = Math.ceil(itemRetailPrice / dailyRentalRate);
-  const isRentRecommended = plannedDays < breakEvenDays;
+  // Assistive Vision Damage Triage State
+  const [damageSummary, setDamageSummary] = useState<string>(
+    'Potential visual difference detected between pickup and return images on lens ring mount.'
+  );
+  const [damageSource, setDamageSource] = useState<string>('optical-triage');
+  const [isInspecting, setIsInspecting] = useState(false);
 
-  // Computed Smart Pricing
-  const calculatedRentalPerDay = Math.round(pricingOriginalMRP * 0.018);
-  const calculatedResellValue = Math.round(pricingOriginalMRP * (1 - (0.025 * pricingAgeMonths + (pricingCondition === 'Like New' ? 0.15 : 0.30))));
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      apiCalculateRentVsBuy({ plannedDays, itemRetailPrice, dailyRentalRate })
+        .then(setRentVsBuyResult)
+        .catch(() => {});
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [plannedDays, itemRetailPrice, dailyRentalRate]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      apiGetSmartPricing({
+        category: pricingCategory,
+        condition: pricingCondition,
+        originalPrice: pricingOriginalMRP,
+        ageMonths: pricingAgeMonths
+      })
+        .then(setPricingResult)
+        .catch(() => {});
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [pricingCategory, pricingCondition, pricingOriginalMRP, pricingAgeMonths]);
+
+  // Fallback computed values before API responds
+  const totalRentCost = rentVsBuyResult?.totalRentalCost ?? ((dailyRentalRate * plannedDays) + 150);
+  const savings = rentVsBuyResult?.capitalSaved ?? Math.max(0, itemRetailPrice - totalRentCost);
+  const breakEvenDays = rentVsBuyResult?.breakEvenDays ?? (dailyRentalRate > 0 ? Math.ceil(itemRetailPrice / dailyRentalRate) : 999);
+  const isRentRecommended = rentVsBuyResult?.isRentRecommended ?? (plannedDays < breakEvenDays);
+
+  const calculatedRentalPerDay = pricingResult?.suggestedDailyRate ?? Math.round(pricingOriginalMRP * 0.018);
+  const calculatedResellValue = pricingResult?.estimatedResaleValue ?? Math.round(pricingOriginalMRP * (1 - (0.025 * pricingAgeMonths + (pricingCondition === 'Like New' ? 0.15 : 0.30))));
+
+  const handleRunDamageInspection = async () => {
+    setIsInspecting(true);
+    try {
+      const res = await apiInspectDamage({
+        productName: 'Sony Alpha A7 IV Full-Frame Camera',
+        ownerNotes: 'Hairline surface scratch 1.8mm long near outer lens mount ring.',
+        estimatedRepairCost: 3500
+      });
+      setDamageSummary(res.summary);
+      setDamageSource(res.aiSource || 'heuristic-triage');
+    } catch {
+      // Keep current summary
+    } finally {
+      setIsInspecting(false);
+    }
+  };
 
   return (
     <div className="py-10 bg-[#EAECF0]/50 min-h-screen">
@@ -52,11 +92,11 @@ export const AiInsightsDashboard: React.FC = () => {
             AI-Powered Circular Decision Tools
           </h1>
           <p className="text-sm text-[#233D4D] mt-1 max-w-2xl">
-            Assistive machine learning algorithms designed to price fairly, detect physical wear-and-tear, and compute accurate Rent vs Buy economics.
+            Assistive decision algorithms designed to price fairly, evaluate physical wear-and-tear, and compute accurate Rent vs Buy economics.
           </p>
           
           <div className="mt-3 inline-block bg-amber-50 border border-amber-300 text-amber-950 text-xs px-3 py-1 rounded-lg font-medium">
-            <strong>Prototype Notice:</strong> Clearly distinguishes between implemented MVP logic and proposed future vision intelligence models.
+            <strong>Engine Mode:</strong> {pricingResult?.aiSource === 'gemini-4-hydrogen' ? 'Live Gemini AI + Circular Economic Model' : 'Circular Economic Model (Rule-based fallback active when Gemini API key is unconfigured)'}
           </div>
         </div>
 
@@ -151,7 +191,7 @@ export const AiInsightsDashboard: React.FC = () => {
               {/* Big AI Verdict */}
               <div className="bg-black/40 p-3.5 rounded-xl flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-bold">AI Verdict</span>
+                  <span className="text-[10px] uppercase tracking-wider text-gray-400 block font-bold">Economic Verdict</span>
                   <span className={`text-base font-display font-extrabold ${isRentRecommended ? 'text-emerald-400' : 'text-[#FE7F2D]'}`}>
                     RECOMMENDATION: {isRentRecommended ? 'RENT PRODUCT' : 'BUY OR RESELL'}
                   </span>
@@ -215,6 +255,7 @@ export const AiInsightsDashboard: React.FC = () => {
                       onChange={(e) => setPricingCondition(e.target.value as any)}
                       className="w-full bg-[#EAECF0] border border-[#233D4D]/15 rounded-xl px-3 py-2 text-xs font-bold text-[#000000] outline-none"
                     >
+                      <option value="Brand New">Brand New (Mint)</option>
                       <option value="Like New">Like New (Mint)</option>
                       <option value="Good Condition">Good Condition</option>
                       <option value="Well Maintained">Well Maintained</option>
@@ -262,7 +303,7 @@ export const AiInsightsDashboard: React.FC = () => {
                     <span className="text-xs text-gray-500 font-normal"> /day</span>
                   </span>
                   <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">
-                    ~12-15 day payback period
+                    Deposit: ₹{(pricingResult?.suggestedSecurityDeposit ?? Math.round(pricingOriginalMRP * 0.15)).toLocaleString()}
                   </span>
                 </div>
 
@@ -279,8 +320,9 @@ export const AiInsightsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              <div className="text-[11px] text-[#233D4D] bg-white/60 p-2 rounded-lg text-center font-medium">
-                ✨ <strong>AI-assisted recommendation:</strong> Calibrated with 4,200+ local transaction data points.
+              <div className="text-[11px] text-[#233D4D] bg-white/60 p-2.5 rounded-lg text-center font-medium">
+                ✨ <strong>{pricingResult?.aiSource === 'gemini-4-hydrogen' ? 'Gemini AI rationale:' : 'Economic model rationale:'}</strong>{' '}
+                {pricingResult?.explanation || 'Calibrated with local circular marketplace depreciation curves.'}
               </div>
             </div>
 
@@ -291,22 +333,31 @@ export const AiInsightsDashboard: React.FC = () => {
         {/* Damage Detection & Product Recommendations Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
-          {/* Tool 3: Damage Detection Simulation */}
+          {/* Tool 3: Damage Detection */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-[#233D4D]/15 space-y-4">
-            <div className="flex items-center space-x-2 border-b border-[#EAECF0] pb-3">
-              <div className="w-8 h-8 rounded-lg bg-[#233D4D] text-white flex items-center justify-center font-bold">
-                <Camera className="w-4 h-4 text-[#FE7F2D]" />
+            <div className="flex items-center justify-between border-b border-[#EAECF0] pb-3">
+              <div className="flex items-center space-x-2">
+                <div className="w-8 h-8 rounded-lg bg-[#233D4D] text-white flex items-center justify-center font-bold">
+                  <Camera className="w-4 h-4 text-[#FE7F2D]" />
+                </div>
+                <div>
+                  <h3 className="font-display font-extrabold text-base text-[#000000]">
+                    Assistive Condition Inspection
+                  </h3>
+                  <span className="text-[10px] text-gray-500">Source: {damageSource}</span>
+                </div>
               </div>
-              <div>
-                <h3 className="font-display font-extrabold text-base text-[#000000]">
-                  Vision Damage Detection Model
-                </h3>
-                <span className="text-[10px] text-gray-500">Optical difference segmentation</span>
-              </div>
+              <button
+                onClick={handleRunDamageInspection}
+                disabled={isInspecting}
+                className="bg-[#233D4D] hover:bg-[#FE7F2D] hover:text-[#000000] text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
+              >
+                {isInspecting ? 'Inspecting...' : 'Run Inspection Triage'}
+              </button>
             </div>
 
             <p className="text-xs text-[#233D4D] leading-relaxed">
-              Demonstrates automatic pixel comparison between baseline handover photos and check-out returns to highlight scratches, dents, or missing parts.
+              Compares baseline handover evidence and return notes to highlight potential variances for human arbitrator review.
             </p>
 
             <div className="bg-[#EAECF0] rounded-2xl p-4 flex items-center space-x-4">
@@ -316,7 +367,7 @@ export const AiInsightsDashboard: React.FC = () => {
                   alt="Scanned item"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-[#FE7F2D]/20 animate-pulse flex items-center justify-center">
+                <div className="absolute inset-0 bg-[#FE7F2D]/20 flex items-center justify-center">
                   <span className="bg-black text-[#FE7F2D] text-[8px] font-black px-1 rounded">
                     Diff 94%
                   </span>
@@ -325,7 +376,7 @@ export const AiInsightsDashboard: React.FC = () => {
               <div className="text-xs space-y-1">
                 <span className="font-extrabold text-[#000000] block">Surface Variance Flagged</span>
                 <p className="text-[#233D4D]">
-                  "Potential visual difference detected between pickup and return images on lens ring mount."
+                  "{damageSummary}"
                 </p>
                 <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded inline-block">
                   Auto-routed to Condition Review
@@ -349,7 +400,7 @@ export const AiInsightsDashboard: React.FC = () => {
             </div>
 
             <p className="text-xs text-[#233D4D] leading-relaxed">
-              Based on your search history and circular usage frequency, ReLoop groups complementary rental gear for creators and builders.
+              Based on circular usage frequency, ReLoop groups complementary rental gear for creators and builders.
             </p>
 
             <div className="space-y-2 text-xs">
@@ -377,3 +428,4 @@ export const AiInsightsDashboard: React.FC = () => {
     </div>
   );
 };
+

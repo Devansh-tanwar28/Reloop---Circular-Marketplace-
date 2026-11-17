@@ -132,7 +132,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onNavigate, onOpenCrea
 
               <button
                 id="hero-btn-list"
-                onClick={() => onNavigate('resell')}
+                onClick={onOpenCreateListing}
                 className="bg-[#233D4D] hover:bg-[#233D4D]/90 text-white font-bold px-6 py-3.5 rounded-xl shadow-sm transition-all flex items-center space-x-2 text-base"
               >
                 <span>List an Item</span>

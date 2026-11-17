@@ -21,6 +21,134 @@ initDatabase();
 const app = express();
 app.use(express.json({ limit: '20mb' }));
 
+// Row formatting helpers to keep API responses aligned with src/types.ts
+function formatUserRow(u: any) {
+  if (!u) return null;
+  return {
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    phone: u.phone || '',
+    role: u.role,
+    avatar: u.avatar,
+    location: u.location || '',
+    bio: u.bio || '',
+    verified: u.verified === 1,
+    verificationStatus: u.verified === 1 ? 'Approved' : u.verified === -1 ? 'Re-upload Requested' : 'Pending Review',
+    rating: Number(u.rating ?? 5.0),
+    walletBalance: Number(u.wallet_balance ?? 0),
+    depositLocked: Number(u.deposit_locked ?? 0),
+    earnings: Number(u.earnings ?? 0),
+    completedRentals: Number(u.completed_rentals ?? 0),
+    successfulSales: Number(u.successful_sales ?? 0),
+    repairCount: Number(u.repair_count ?? 0),
+    createdAt: u.created_at
+  };
+}
+
+function formatRentalRow(r: any) {
+  return {
+    id: r.id,
+    name: r.name,
+    category: r.category,
+    condition: r.condition,
+    rating: r.rating,
+    reviewsCount: r.reviews_count,
+    location: r.location,
+    rentalPricePerDay: r.rental_price_per_day,
+    securityDeposit: r.security_deposit,
+    availability: r.availability,
+    images: JSON.parse(r.images_json || '[]'),
+    owner: {
+      name: r.owner_name,
+      avatar: r.owner_avatar,
+      verified: true,
+      rating: r.owner_rating,
+      reviewsCount: r.owner_reviews_count,
+      responseRate: r.owner_response_rate,
+      joinedDate: 'Verified Host',
+      identityVerified: true
+    },
+    description: r.description,
+    features: JSON.parse(r.features_json || '[]'),
+    specifications: JSON.parse(r.specifications_json || '{}'),
+    rentalTerms: JSON.parse(r.rental_terms_json || '[]'),
+    conditionDocumented: Boolean(r.condition_documented),
+    pickupEvidenceRequired: Boolean(r.pickup_evidence_required),
+    totalRentalsCompleted: r.total_rentals_completed,
+    aiSuggestedPrice: r.ai_suggested_price
+  };
+}
+
+function formatBookingRow(b: any) {
+  return {
+    id: b.id,
+    productId: b.product_id,
+    productName: b.product_name,
+    productImage: b.product_image,
+    startDate: b.start_date,
+    endDate: b.end_date,
+    days: b.days,
+    rentalAmount: b.rental_amount,
+    securityDeposit: b.security_deposit,
+    platformFee: b.platform_fee,
+    totalAmount: b.total_amount,
+    status: b.status,
+    pickupDate: b.pickup_date,
+    returnDate: b.return_date,
+    ownerName: b.owner_name,
+    renterName: b.renter_name,
+    location: b.location,
+    depositStatus: b.deposit_status
+  };
+}
+
+function formatRepairRequestRow(r: any) {
+  return {
+    id: r.id,
+    productName: r.product_name,
+    category: r.category,
+    brandModel: r.brand_model,
+    problemDescription: r.problem_description,
+    image: r.image,
+    location: r.location,
+    preferredDate: r.preferred_date,
+    status: r.status,
+    quotationAmount: r.quotation_amount,
+    providerName: r.provider_name,
+    submittedDate: r.submitted_date
+  };
+}
+
+function formatResellRow(r: any) {
+  return {
+    id: r.id,
+    name: r.name,
+    category: r.category,
+    brand: r.brand,
+    age: r.age,
+    condition: r.condition,
+    originalPrice: r.original_price,
+    sellingPrice: r.selling_price,
+    location: r.location,
+    seller: {
+      name: r.seller_name,
+      avatar: r.seller_avatar,
+      verified: true,
+      rating: r.seller_rating,
+      reviewsCount: 32,
+      responseRate: '10 mins',
+      joinedDate: 'Verified Member',
+      identityVerified: true
+    },
+    description: r.description,
+    images: JSON.parse(r.images_json || '[]'),
+    interestedBuyers: r.interested_buyers,
+    postedDate: r.posted_date,
+    verifiedListing: true
+  };
+}
+
 // Helper: Authenticate JWT Token
 function authenticateToken(req: Request, res: Response, next: Function) {
   const authHeader = req.headers['authorization'];
@@ -67,9 +195,9 @@ app.post('/api/auth/register', (req: Request, res: Response) => {
     `).run(userId, name, email, passwordHash, phone || '', role, avatar, location, bio);
 
     const token = jwt.sign({ id: userId, email, role }, JWT_SECRET, { expiresIn: '7d' });
-    const user = db.prepare('SELECT id, name, email, phone, role, avatar, location, bio, verified, rating, wallet_balance, deposit_locked, earnings, completed_rentals, successful_sales, repair_count FROM users WHERE id = ?').get(userId);
+    const rawUser = db.prepare('SELECT id, name, email, phone, role, avatar, location, bio, verified, rating, wallet_balance, deposit_locked, earnings, completed_rentals, successful_sales, repair_count, created_at FROM users WHERE id = ?').get(userId);
 
-    return res.status(201).json({ user, token });
+    return res.status(201).json({ user: formatUserRow(rawUser), token });
   } catch (error: any) {
     console.error('Registration error:', error);
     return res.status(500).json({ error: error.message || 'Registration failed' });
@@ -95,9 +223,7 @@ app.post('/api/auth/login', (req: Request, res: Response) => {
     }
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-    delete user.password_hash;
-
-    return res.json({ user, token });
+    return res.json({ user: formatUserRow(user), token });
   } catch (error: any) {
     console.error('Login error:', error);
     return res.status(500).json({ error: error.message || 'Login failed' });
@@ -114,17 +240,109 @@ app.get('/api/auth/me', (req: Request, res: Response) => {
 
   jwt.verify(token, JWT_SECRET, (err: any, decoded: any) => {
     if (err) return res.status(403).json({ error: 'Invalid token' });
-    const user: any = db.prepare('SELECT id, name, email, phone, role, avatar, location, bio, verified, rating, wallet_balance, deposit_locked, earnings, completed_rentals, successful_sales, repair_count FROM users WHERE id = ?').get(decoded.id);
+    const user: any = db.prepare('SELECT id, name, email, phone, role, avatar, location, bio, verified, rating, wallet_balance, deposit_locked, earnings, completed_rentals, successful_sales, repair_count, created_at FROM users WHERE id = ?').get(decoded.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    return res.json(user);
+    return res.json(formatUserRow(user));
   });
 });
 
 // GET /api/users (List all users / switch personas)
 app.get('/api/users', (req: Request, res: Response) => {
   try {
-    const users = db.prepare('SELECT id, name, email, phone, role, avatar, location, bio, verified, rating, wallet_balance, deposit_locked, earnings, completed_rentals, successful_sales, repair_count FROM users ORDER BY created_at DESC').all();
-    return res.json(users);
+    const rows: any[] = db.prepare('SELECT id, name, email, phone, role, avatar, location, bio, verified, rating, wallet_balance, deposit_locked, earnings, completed_rentals, successful_sales, repair_count, created_at FROM users ORDER BY created_at DESC').all();
+    return res.json(rows.map(formatUserRow));
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/users/:id (Update user profile)
+app.put('/api/users/:id', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { name, phone, location, bio } = req.body;
+    const existing: any = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    db.prepare(`
+      UPDATE users
+      SET name = ?, phone = ?, location = ?, bio = ?
+      WHERE id = ?
+    `).run(
+      name ?? existing.name,
+      phone ?? existing.phone,
+      location ?? existing.location,
+      bio ?? existing.bio,
+      id
+    );
+
+    const updated: any = db.prepare('SELECT id, name, email, phone, role, avatar, location, bio, verified, rating, wallet_balance, deposit_locked, earnings, completed_rentals, successful_sales, repair_count, created_at FROM users WHERE id = ?').get(id);
+    return res.json(formatUserRow(updated));
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/transactions (User wallet & escrow ledger)
+app.get('/api/transactions', (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+    let sql = 'SELECT * FROM transactions';
+    const params: any[] = [];
+    if (userId) {
+      sql += ' WHERE user_id = ?';
+      params.push(userId);
+    }
+    sql += ' ORDER BY created_at DESC LIMIT 50';
+    const rows: any[] = db.prepare(sql).all(...params);
+    return res.json(rows.map(t => ({
+      id: t.id,
+      userId: t.user_id,
+      type: t.type,
+      amount: t.amount,
+      status: t.status,
+      referenceId: t.reference_id,
+      description: t.description,
+      createdAt: t.created_at
+    })));
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/notifications
+app.get('/api/notifications', (req: Request, res: Response) => {
+  try {
+    const { userId } = req.query;
+    let sql = 'SELECT * FROM notifications';
+    const params: any[] = [];
+    if (userId) {
+      sql += ' WHERE user_id = ?';
+      params.push(userId);
+    }
+    sql += ' ORDER BY created_at DESC LIMIT 30';
+    const rows: any[] = db.prepare(sql).all(...params);
+    return res.json(rows.map(n => ({
+      id: n.id,
+      userId: n.user_id,
+      title: n.title,
+      message: n.message,
+      type: n.type,
+      read: Boolean(n.read),
+      createdAt: n.created_at
+    })));
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// PATCH /api/notifications/:id/read
+app.patch('/api/notifications/:id/read', (req: Request, res: Response) => {
+  try {
+    db.prepare('UPDATE notifications SET read = 1 WHERE id = ?').run(req.params.id);
+    return res.json({ success: true });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
@@ -273,6 +491,11 @@ app.post('/api/rentals', (req: Request, res: Response) => {
     };
 
     const newId = `rent-${Date.now()}`;
+    const resolvedImages = images.length > 0 ? images : ['https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=80'];
+    const resolvedFeatures = features.length > 0 ? features : ['Verified Owner Handover', 'Condition Documented'];
+    const resolvedSpecs = Object.keys(specifications).length > 0 ? specifications : { 'Condition': condition || 'Like New', 'Area': location || 'Bengaluru' };
+    const resolvedTerms = rentalTerms.length > 0 ? rentalTerms : ['Government ID verification at pickup', 'Timestamped pickup & return photos required', 'Security deposit refunded after verified return'];
+
     db.prepare(`
       INSERT INTO rental_products (
         id, name, category, condition, rating, reviews_count, location,
@@ -284,13 +507,14 @@ app.post('/api/rentals', (req: Request, res: Response) => {
       ) VALUES (?, ?, ?, ?, 5.0, 0, ?, ?, ?, 'Available Now', ?, ?, ?, ?, ?, 0, '15 mins', ?, ?, ?, ?, 1, 1, 0, ?)
     `).run(
       newId, name, category || 'Electronics', condition || 'Like New', location || 'Bengaluru',
-      Number(rentalPricePerDay), Number(securityDeposit), JSON.stringify(images.length > 0 ? images : ['https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=800&auto=format&fit=crop&q=80']),
+      Number(rentalPricePerDay), Number(securityDeposit), JSON.stringify(resolvedImages),
       ownerId, user.name, user.avatar, user.rating || 5.0, description || '',
-      JSON.stringify(features), JSON.stringify(specifications), JSON.stringify(rentalTerms),
+      JSON.stringify(resolvedFeatures), JSON.stringify(resolvedSpecs), JSON.stringify(resolvedTerms),
       Math.round(Number(rentalPricePerDay) * 1.05)
     );
 
-    return res.status(201).json({ success: true, id: newId });
+    const createdRow: any = db.prepare('SELECT * FROM rental_products WHERE id = ?').get(newId);
+    return res.status(201).json(formatRentalRow(createdRow));
   } catch (error: any) {
     console.error('Create rental listing error:', error);
     return res.status(500).json({ error: error.message });
@@ -378,7 +602,7 @@ app.post('/api/rentals/:id/book', (req: Request, res: Response) => {
     `).run(`nt-${Date.now()}`, renterId, 'Booking Confirmed', `Your booking for ${product.name} is confirmed. ₹${securityDeposit} is secured in Escrow.`, 'booking');
 
     const createdBooking = db.prepare('SELECT * FROM bookings WHERE id = ?').get(bookingId);
-    return res.status(201).json(createdBooking);
+    return res.status(201).json(formatBookingRow(createdBooking));
   } catch (error: any) {
     console.error('Booking error:', error);
     return res.status(500).json({ error: error.message });
@@ -402,27 +626,7 @@ app.get('/api/bookings', (req: Request, res: Response) => {
     sql += ' ORDER BY created_at DESC';
 
     const rows: any[] = db.prepare(sql).all(...params);
-    const bookings = rows.map(b => ({
-      id: b.id,
-      productId: b.product_id,
-      productName: b.product_name,
-      productImage: b.product_image,
-      startDate: b.start_date,
-      endDate: b.end_date,
-      days: b.days,
-      rentalAmount: b.rental_amount,
-      securityDeposit: b.security_deposit,
-      platformFee: b.platform_fee,
-      totalAmount: b.total_amount,
-      status: b.status,
-      pickupDate: b.pickup_date,
-      returnDate: b.return_date,
-      ownerName: b.owner_name,
-      location: b.location,
-      depositStatus: b.deposit_status
-    }));
-
-    return res.json(bookings);
+    return res.json(rows.map(formatBookingRow));
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
@@ -647,7 +851,7 @@ app.post('/api/repair/requests', (req: Request, res: Response) => {
     );
 
     const created = db.prepare('SELECT * FROM repair_requests WHERE id = ?').get(requestId);
-    return res.status(201).json(created);
+    return res.status(201).json(formatRepairRequestRow(created));
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
@@ -672,7 +876,7 @@ app.post('/api/repair/requests/:id/approve-quotation', (req: Request, res: Respo
 app.get('/api/resell', (req: Request, res: Response) => {
   try {
     const { category, search } = req.query;
-    let sql = 'SELECT * FROM resell_products WHERE status = "active"';
+    let sql = "SELECT * FROM resell_products WHERE status = 'active'";
     const params: any[] = [];
 
     if (category && category !== 'All') {
@@ -753,7 +957,38 @@ app.post('/api/resell', (req: Request, res: Response) => {
       JSON.stringify(images.length > 0 ? images : ['https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800&auto=format&fit=crop&q=80'])
     );
 
-    return res.status(201).json({ success: true, id: newId });
+    const createdResell = db.prepare('SELECT * FROM resell_products WHERE id = ?').get(newId);
+    return res.status(201).json(formatResellRow(createdResell));
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/resell/:id/offer (Buyer offer / inquiry)
+app.post('/api/resell/:id/offer', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { buyerId = 'usr-101', offerAmount, message = 'Interested in purchasing with Buyer Protection.' } = req.body;
+
+    const product: any = db.prepare('SELECT * FROM resell_products WHERE id = ?').get(id);
+    if (!product) return res.status(404).json({ error: 'Item not found' });
+
+    const buyer: any = db.prepare('SELECT name FROM users WHERE id = ?').get(buyerId) || { name: 'Verified Buyer' };
+    const inquiryId = `inq-${Date.now()}`;
+
+    db.prepare(`
+      INSERT INTO resell_inquiries (id, product_id, product_name, buyer_id, buyer_name, seller_id, offer_amount, message, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    `).run(inquiryId, id, product.name, buyerId, buyer.name, product.seller_id, Number(offerAmount || product.selling_price), message);
+
+    db.prepare('UPDATE resell_products SET interested_buyers = interested_buyers + 1 WHERE id = ?').run(id);
+
+    db.prepare(`
+      INSERT INTO notifications (id, user_id, title, message, type)
+      VALUES (?, ?, ?, ?, 'resell_offer')
+    `).run(`nt-${Date.now()}`, product.seller_id, 'New Offer Received', `${buyer.name} offered ₹${Number(offerAmount || product.selling_price).toLocaleString()} for ${product.name}`, 'resell');
+
+    return res.status(201).json({ success: true, id: inquiryId, interestedBuyers: product.interested_buyers + 1 });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
@@ -771,12 +1006,18 @@ app.post('/api/resell/:id/purchase', (req: Request, res: Response) => {
 
     const buyer: any = db.prepare('SELECT name FROM users WHERE id = ?').get(buyerId) || { name: 'Verified Buyer' };
 
-    db.prepare('UPDATE resell_products SET status = "sold", buyer_id = ?, buyer_name = ? WHERE id = ?').run(buyerId, buyer.name, id);
+    db.prepare("UPDATE resell_products SET status = 'sold', buyer_id = ?, buyer_name = ? WHERE id = ?").run(buyerId, buyer.name, id);
+    db.prepare('UPDATE users SET successful_sales = successful_sales + 1, earnings = earnings + ? WHERE id = ?').run(product.selling_price, product.seller_id);
 
     db.prepare(`
       INSERT INTO transactions (id, user_id, type, amount, status, reference_id, description)
       VALUES (?, ?, 'resell_purchase', ?, 'completed', ?, ?)
     `).run(`tx-${Date.now()}`, buyerId, product.selling_price, id, `Purchased pre-owned ${product.name} with Buyer Protection`);
+
+    db.prepare(`
+      INSERT INTO notifications (id, user_id, title, message, type)
+      VALUES (?, ?, ?, ?, 'resell')
+    `).run(`nt-${Date.now()}`, buyerId, 'Purchase Protected', `Escrow order confirmed for ${product.name} (₹${product.selling_price.toLocaleString()}).`, 'resell');
 
     return res.json({ success: true, message: 'Purchase confirmed with Buyer Protection escrow.' });
   } catch (error: any) {
@@ -793,16 +1034,18 @@ app.get('/api/admin/overview', (req: Request, res: Response) => {
   try {
     const usersCount = (db.prepare('SELECT COUNT(*) as c FROM users').get() as any).c;
     const verifiedUsersCount = (db.prepare('SELECT COUNT(*) as c FROM users WHERE verified = 1').get() as any).c;
+    const pendingKycCount = (db.prepare('SELECT COUNT(*) as c FROM users WHERE verified != 1').get() as any).c;
     const rentalsCount = (db.prepare('SELECT COUNT(*) as c FROM rental_products').get() as any).c;
     const activeBookingsCount = (db.prepare("SELECT COUNT(*) as c FROM bookings WHERE status NOT IN ('Deposit Refunded', 'Cancelled')").get() as any).c;
     const totalDepositsLocked = (db.prepare('SELECT COALESCE(SUM(deposit_locked), 0) as s FROM users').get() as any).s;
     const disputesCount = (db.prepare("SELECT COUNT(*) as c FROM damage_claims WHERE status NOT IN ('Resolved')").get() as any).c;
     const repairsCount = (db.prepare('SELECT COUNT(*) as c FROM repair_requests').get() as any).c;
-    const resellCount = (db.prepare('SELECT COUNT(*) as c FROM resell_products').get() as any).c;
+    const resellCount = (db.prepare("SELECT COUNT(*) as c FROM resell_products WHERE status = 'active'").get() as any).c;
 
     return res.json({
       totalUsers: usersCount,
       verifiedUsers: verifiedUsersCount,
+      pendingKycCount,
       activeRentalListings: rentalsCount,
       activeBookings: activeBookingsCount,
       totalDepositsHeldInEscrow: totalDepositsLocked,
@@ -812,6 +1055,188 @@ app.get('/api/admin/overview', (req: Request, res: Response) => {
       systemHealth: '100% Operational',
       timestamp: new Date().toISOString()
     });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/admin/users (KYC moderation queue & user directory)
+app.get('/api/admin/users', (req: Request, res: Response) => {
+  try {
+    const rows: any[] = db.prepare('SELECT * FROM users ORDER BY verified ASC, created_at DESC').all();
+    return res.json(rows.map(formatUserRow));
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// PATCH /api/admin/users/:id/verify (Approve or request KYC re-upload)
+app.patch('/api/admin/users/:id/verify', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body; // 'approved' | 'rejected'
+    const verifiedVal = status === 'approved' ? 1 : -1;
+
+    const user: any = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    db.prepare('UPDATE users SET verified = ? WHERE id = ?').run(verifiedVal, id);
+
+    db.prepare(`
+      INSERT INTO notifications (id, user_id, title, message, type)
+      VALUES (?, ?, ?, ?, 'kyc')
+    `).run(
+      `nt-${Date.now()}`,
+      id,
+      status === 'approved' ? 'KYC Verified' : 'KYC Re-upload Needed',
+      status === 'approved'
+        ? 'Your identity verification was approved. Verified User badge is now active.'
+        : 'Please upload a clearer government ID photo for verification.',
+      'kyc'
+    );
+
+    const updated: any = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+    return res.json(formatUserRow(updated));
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/admin/listings (Rental & Resell moderation inventory)
+app.get('/api/admin/listings', (req: Request, res: Response) => {
+  try {
+    const rentals: any[] = db.prepare('SELECT * FROM rental_products ORDER BY created_at DESC').all();
+    const resell: any[] = db.prepare('SELECT * FROM resell_products ORDER BY created_at DESC').all();
+    return res.json({
+      rentals: rentals.map(r => ({
+        id: r.id,
+        type: 'rental',
+        name: r.name,
+        category: r.category,
+        ownerName: r.owner_name,
+        location: r.location,
+        priceLabel: `₹${r.rental_price_per_day}/day`,
+        status: r.availability,
+        image: (JSON.parse(r.images_json || '[]') as string[])[0] || ''
+      })),
+      resell: resell.map(r => ({
+        id: r.id,
+        type: 'resell',
+        name: r.name,
+        category: r.category,
+        ownerName: r.seller_name,
+        location: r.location,
+        priceLabel: `₹${r.selling_price.toLocaleString()}`,
+        status: r.status,
+        image: (JSON.parse(r.images_json || '[]') as string[])[0] || ''
+      }))
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// DELETE /api/admin/listings/:type/:id
+app.delete('/api/admin/listings/:type/:id', (req: Request, res: Response) => {
+  try {
+    const { type, id } = req.params;
+    if (type === 'rental') {
+      db.prepare('DELETE FROM rental_products WHERE id = ?').run(id);
+    } else if (type === 'resell') {
+      db.prepare('DELETE FROM resell_products WHERE id = ?').run(id);
+    } else {
+      return res.status(400).json({ error: 'Invalid listing type' });
+    }
+    return res.json({ success: true });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/admin/transactions (Platform-wide escrow ledger)
+app.get('/api/admin/transactions', (req: Request, res: Response) => {
+  try {
+    const rows: any[] = db.prepare(`
+      SELECT t.*, u.name as user_name
+      FROM transactions t
+      LEFT JOIN users u ON u.id = t.user_id
+      ORDER BY t.created_at DESC
+      LIMIT 100
+    `).all();
+    return res.json(rows.map(t => ({
+      id: t.id,
+      userId: t.user_id,
+      userName: t.user_name || 'Member',
+      type: t.type,
+      amount: t.amount,
+      status: t.status,
+      referenceId: t.reference_id,
+      description: t.description,
+      createdAt: t.created_at
+    })));
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/claims/:id/admin-decision (Arbitrate dispute & settle escrow)
+app.post('/api/claims/:id/admin-decision', (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { decision } = req.body; // 'award_owner' | 'dismiss_refund'
+    const claim: any = db.prepare('SELECT * FROM damage_claims WHERE id = ?').get(id);
+    if (!claim) return res.status(404).json({ error: 'Claim not found' });
+
+    const booking: any = db.prepare('SELECT * FROM bookings WHERE id = ?').get(claim.rental_id);
+    const repairAmount = Number(claim.estimated_repair_cost || 0);
+    const depositHeld = Number(booking?.security_deposit || repairAmount);
+
+    if (decision === 'award_owner') {
+      const award = Math.min(repairAmount, depositHeld);
+      const remainder = Math.max(0, depositHeld - award);
+
+      db.prepare("UPDATE damage_claims SET status = 'Resolved', admin_decision = 'award_owner', final_compensation = ? WHERE id = ?").run(award, id);
+      if (booking) {
+        db.prepare("UPDATE bookings SET status = 'Deposit Refunded', deposit_status = 'Partial Deduction' WHERE id = ?").run(booking.id);
+        db.prepare('UPDATE users SET deposit_locked = MAX(0, deposit_locked - ?), wallet_balance = wallet_balance + ? WHERE id = ?').run(depositHeld, remainder, claim.renter_id);
+        db.prepare('UPDATE users SET wallet_balance = wallet_balance + ?, earnings = earnings + ? WHERE id = ?').run(award, award, claim.owner_id);
+      }
+
+      db.prepare(`
+        INSERT INTO transactions (id, user_id, type, amount, status, reference_id, description)
+        VALUES (?, ?, 'claim_settlement', ?, 'completed', ?, ?)
+      `).run(`tx-${Date.now()}-1`, claim.owner_id, award, id, `Repair compensation awarded for ${claim.product_name}`);
+
+      if (remainder > 0) {
+        db.prepare(`
+          INSERT INTO transactions (id, user_id, type, amount, status, reference_id, description)
+          VALUES (?, ?, 'deposit_refund', ?, 'completed', ?, ?)
+        `).run(`tx-${Date.now()}-2`, claim.renter_id, remainder, id, `Remaining escrow deposit refunded for ${claim.product_name}`);
+      }
+
+      return res.json({
+        success: true,
+        status: 'Resolved',
+        message: `Escrow funds of ₹${award.toLocaleString()} awarded to owner for repairs. Remainder ₹${remainder.toLocaleString()} returned to renter.`
+      });
+    } else {
+      db.prepare("UPDATE damage_claims SET status = 'Resolved', admin_decision = 'dismiss_refund', final_compensation = 0 WHERE id = ?").run(id);
+      if (booking) {
+        db.prepare("UPDATE bookings SET status = 'Deposit Refunded', deposit_status = 'Released' WHERE id = ?").run(booking.id);
+        db.prepare('UPDATE users SET deposit_locked = MAX(0, deposit_locked - ?), wallet_balance = wallet_balance + ? WHERE id = ?').run(depositHeld, depositHeld, claim.renter_id);
+      }
+
+      db.prepare(`
+        INSERT INTO transactions (id, user_id, type, amount, status, reference_id, description)
+        VALUES (?, ?, 'deposit_refund', ?, 'completed', ?, ?)
+      `).run(`tx-${Date.now()}`, claim.renter_id, depositHeld, id, `Claim dismissed; 100% escrow deposit refunded for ${claim.product_name}`);
+
+      return res.json({
+        success: true,
+        status: 'Resolved',
+        message: `Claim dismissed as normal wear & tear. Full deposit of ₹${depositHeld.toLocaleString()} refunded to renter.`
+      });
+    }
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
@@ -828,17 +1253,42 @@ app.post('/api/ai/pricing-recommendation', async (req: Request, res: Response) =
     let baseRatePercent = 0.018; // 1.8% daily
     if (condition === 'Brand New') baseRatePercent = 0.022;
     if (condition === 'Good Condition') baseRatePercent = 0.014;
+    if (condition === 'Well Maintained') baseRatePercent = 0.012;
 
     const suggestedDaily = Math.round(mrp * baseRatePercent);
     const suggestedDeposit = Math.round(mrp * 0.15);
-    const estimatedResale = Math.round(mrp * Math.max(0.4, 1 - (0.02 * age + 0.15)));
+    const conditionFactor = condition === 'Brand New' ? 0.08 : condition === 'Like New' ? 0.15 : condition === 'Good Condition' ? 0.25 : 0.35;
+    const estimatedResale = Math.round(mrp * Math.max(0.35, 1 - (0.02 * age + conditionFactor)));
+
+    let explanation = `Calculated using ReLoop circular depreciation model for ${condition || 'Like New'} ${category || 'Equipment'}. Reflects 15% escrow deposit buffer and local Bengaluru demand.`;
+    let aiSource = 'economic-model';
+
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const ai = new GoogleGenAI({
+          apiKey: process.env.GEMINI_API_KEY,
+          httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+        });
+        const response = await ai.models.generateContent({
+          model: 'gemini-4-hydrogen',
+          contents: `In 2 concise sentences, give circular marketplace pricing rationale for a ${age}-month-old ${brand || ''} ${category || 'product'} in "${condition}" condition with original MRP ₹${mrp}, suggested daily rent ₹${suggestedDaily}/day, and suggested resell ₹${estimatedResale} in Bengaluru.`
+        });
+        if (response.text) {
+          explanation = response.text.trim();
+          aiSource = 'gemini-4-hydrogen';
+        }
+      } catch (aiErr) {
+        console.warn('Gemini pricing note fallback to economic model:', aiErr);
+      }
+    }
 
     return res.json({
       suggestedDailyRate: suggestedDaily,
       suggestedRange: { min: Math.round(suggestedDaily * 0.85), max: Math.round(suggestedDaily * 1.15) },
       suggestedSecurityDeposit: suggestedDeposit,
       estimatedResaleValue: estimatedResale,
-      explanation: `Calculated using ReLoop circular depreciation model for ${condition} ${category || 'Equipment'}. Reflects 15% escrow deposit buffer and average local Bengaluru demand.`
+      explanation,
+      aiSource
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
@@ -856,7 +1306,7 @@ app.post('/api/ai/rent-vs-buy', (req: Request, res: Response) => {
     const rentalCharges = dailyRate * days;
     const platformFee = Math.round(rentalCharges * 0.05) + 50;
     const totalRentCost = rentalCharges + platformFee;
-    const breakEvenDays = Math.ceil(retail / dailyRate);
+    const breakEvenDays = dailyRate > 0 ? Math.ceil(retail / dailyRate) : 999;
     const isRentRecommended = days < breakEvenDays;
     const capitalSaved = retail - totalRentCost;
 
@@ -864,6 +1314,7 @@ app.post('/api/ai/rent-vs-buy', (req: Request, res: Response) => {
       plannedDays: days,
       retailPrice: retail,
       dailyRentalRate: dailyRate,
+      platformFee,
       totalRentalCost: totalRentCost,
       breakEvenDays,
       capitalSaved: Math.max(0, capitalSaved),
@@ -872,6 +1323,36 @@ app.post('/api/ai/rent-vs-buy', (req: Request, res: Response) => {
         ? `Renting saves ₹${capitalSaved.toLocaleString()} upfront. You would need to use this item for over ${breakEvenDays} days before purchasing becomes economically viable.`
         : `Purchasing may be more economical if you require this item for ${days} days or longer.`
     });
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// POST /api/ai/damage-inspect (Assistive condition assessment)
+app.post('/api/ai/damage-inspect', async (req: Request, res: Response) => {
+  try {
+    const { productName, ownerNotes, estimatedRepairCost } = req.body;
+    const fallbackSummary = `Assistive optical comparison flagged surface variance on ${productName || 'item'}. Human arbitration and pickup/return evidence photos remain authoritative before any escrow allocation.`;
+
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const ai = new GoogleGenAI({
+          apiKey: process.env.GEMINI_API_KEY,
+          httpOptions: { headers: { 'User-Agent': 'aistudio-build' } }
+        });
+        const response = await ai.models.generateContent({
+          model: 'gemini-4-hydrogen',
+          contents: `Summarize a fair, neutral 2-sentence condition inspection triage note for "${productName}" where the owner noted "${ownerNotes}" with estimated repair ₹${estimatedRepairCost}. Emphasize that human review governs final escrow settlement.`
+        });
+        if (response.text) {
+          return res.json({ summary: response.text.trim(), aiSource: 'gemini-4-hydrogen' });
+        }
+      } catch (err) {
+        console.warn('Gemini damage inspect fallback:', err);
+      }
+    }
+
+    return res.json({ summary: fallbackSummary, aiSource: 'heuristic-triage' });
   } catch (error: any) {
     return res.status(500).json({ error: error.message });
   }
